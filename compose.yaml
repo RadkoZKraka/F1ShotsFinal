@@ -1,0 +1,6 @@
+﻿services:
+  f1shots:
+    image: f1shots
+    build:
+      context: .
+      dockerfile: F1Shots/Dockerfile
