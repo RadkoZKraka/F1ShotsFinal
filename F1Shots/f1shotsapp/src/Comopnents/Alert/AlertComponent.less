@@ -1,0 +1,49 @@
+﻿/* AlertComponent.less */
+.alert-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 300px;
+  padding: 10px;
+  border-radius: 5px;
+  color: white;
+  font-weight: bold;
+  z-index: 9999;
+}
+
+.alert-message {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.success {
+  background-color: #4CAF50; /* Green */
+}
+
+.error {
+  background-color: #f44336; /* Red */
+}
+
+.info {
+  background-color: #2196F3; /* Blue */
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.close-button:hover {
+  color: #ccc;
+}
+
+.alert-manager {
+  position: absolute;
+  top: 60px;
+  right: 0;
+  z-index: 1000;
+}

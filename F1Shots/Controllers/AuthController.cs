@@ -1,101 +1,108 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using F1Shots.Data;
+using System.Text.RegularExpressions;
 using F1Shots.Models;
 using F1Shots.Services;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-namespace F1Shots.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class AuthController : ControllerBase
+namespace F1Shots.Controllers
 {
-    private readonly MongoDBService _mongoDBService;
-    private readonly UserService _userService;
-    private readonly IConfiguration _configuration;
-
-    public AuthController(MongoDBService mongoDBService, UserService userService, IConfiguration configuration)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AuthController : ControllerBase
     {
-        _mongoDBService = mongoDBService;
-        _userService = userService;
-        _configuration = configuration;
-    }
+        private readonly UserService _userService;
+        private readonly IConfiguration _configuration;
 
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
-    {
-        // Check if user exists by email
-        var user = _mongoDBService.GetUserProfilesAsync().Result
-            .FirstOrDefault(u => u.Email == loginRequest.Email);
-
-        if (user == null || !_userService.VerifyPassword(user, loginRequest.Password))
+        public AuthController(UserService userService, IConfiguration configuration)
         {
-            return Unauthorized("Invalid credentials");
+            _userService = userService;
+            _configuration = configuration;
         }
 
-        // Generate JWT Token
-        var claims = new[]
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),  // Convert ObjectId to string
-            new Claim(ClaimTypes.Email, user.Email)
-        };
+            // Regex to check if the identifier looks like an email
+            string emailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+            bool isEmail = Regex.IsMatch(loginRequest.Identifier, emailPattern);
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(
-            _configuration["Jwt:Issuer"],
-            _configuration["Jwt:Audience"],
-            claims,
-            expires: DateTime.Now.AddDays(1),
-            signingCredentials: creds
-        );
+            // Try to find the user by email or username based on the regex result
+            var user = isEmail
+                ? await _userService.GetUserByEmailAsync(loginRequest.Identifier)
+                : await _userService.GetUserByUsernameAsync(loginRequest.Identifier);
 
-        return Ok(new { Token = new JwtSecurityTokenHandler().WriteToken(token) });
-    }
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest)
-    {
-        var existingUser = _mongoDBService.GetUserProfilesAsync().Result
-            .FirstOrDefault(u => u.Email == registerRequest.Email);
+            if (user == null || !_userService.VerifyPassword(user, loginRequest.Password))
+            {
+                return Unauthorized("Invalid credentials.");
+            }
 
-        if (existingUser != null)
-        {
-            return Conflict("User already exists.");
+            // Generate JWT Token
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // Use user's ID
+                new Claim(ClaimTypes.Email, user.Email)
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var token = new JwtSecurityToken(
+                _configuration["Jwt:Issuer"],
+                _configuration["Jwt:Audience"],
+                claims,
+                expires: DateTime.Now.AddDays(1),
+                signingCredentials: creds
+            );
+
+            return Ok(new { Token = new JwtSecurityTokenHandler().WriteToken(token) });
         }
 
-        // Hash the password
-        var hashedPassword = _userService.HashPassword(registerRequest.Password);
-
-        // Create new user profile
-        var newUserProfile = new UserProfile
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest)
         {
-            Username = registerRequest.Username,
-            Email = registerRequest.Email,
-            PasswordHash = hashedPassword
-        };
+            // Check if the user already exists using UserService
+            var existingUser = await _userService.GetUserByEmailAsync(registerRequest.Email);
 
-        // Save user to MongoDB
-        var collection = _mongoDBService.GetCollection<UserProfile>("UserProfiles");
-        await collection.InsertOneAsync(newUserProfile);
+            if (existingUser != null)
+            {
+                return Conflict("User already exists.");
+            }
 
-        return Ok("User registered successfully.");
+            // Hash the password using UserService
+            var hashedPassword = _userService.HashPassword(registerRequest.Password);
+
+            // Create a new user profile
+            var newUserProfile = new UserProfile
+            {
+                Username = registerRequest.Username,
+                Email = registerRequest.Email,
+                PasswordHash = hashedPassword
+            };
+
+            // Save the new user using UserService
+            await _userService.CreateUserAsync(newUserProfile);
+
+            return Ok("User registered successfully.");
+        }
     }
-}
 
-// A simple login request model for capturing email and password
-public class LoginRequest
-{
-    public string Email { get; set; }
-    public string Password { get; set; }
-}
-public class RegisterRequest
-{
-    public string Username { get; set; }
-    public string Email { get; set; }
-    public string Password { get; set; }
+
+    // A simple login request model for capturing email and password
+// A simple login request model for capturing email/username and password
+    public class LoginRequest
+    {
+        public string Identifier { get; set; } // This can be email or username
+        public string Password { get; set; }
+    }
+
+
+    // A simple register request model for capturing username, email, and password
+    public class RegisterRequest
+    {
+        public string Username { get; set; }
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
 }

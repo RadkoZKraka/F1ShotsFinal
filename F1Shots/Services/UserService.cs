@@ -1,28 +1,76 @@
-﻿using F1Shots.Models;
-using Microsoft.AspNetCore.Identity;
-
-namespace F1Shots.Services;
+﻿using F1Shots.Controllers;
+using F1Shots.Models;
+using F1Shots.Services.Requests;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
 public class UserService
 {
-    private readonly PasswordHasher<UserProfile> _passwordHasher;
+    private readonly UserStorage _userStorage;
 
-    public UserService()
+    public UserService(UserStorage userStorage)
     {
-        _passwordHasher = new PasswordHasher<UserProfile>();
+        _userStorage = userStorage;
+    }
+    // Method to get a user by their ObjectId
+    public async Task<UserProfile> GetUserByIdAsync(ObjectId userId)
+    {
+        return await _userStorage.GetUserByIdAsync(userId);
+
+    }
+    public async Task<UserPublicProfile> GetPublicUserByUsernameAsync(string username)
+    {
+        return await _userStorage.GetPublicProfileByUsernameAsync(username);
+    }
+    public async Task<UserProfile> GetUserByEmailAsync(string email)
+    {
+        return await _userStorage.GetUserByEmailAsync(email);
+    }
+    
+    public async Task<UpdateResult> UpdateUserProfileAsync(ObjectId userId, UpdateProfileRequest request)
+    {
+        // Update the user profile in the database
+        return await _userStorage.UpdateUserProfileAsync(userId, request.Username, request.Email, request.Public, request.Open);
     }
 
-    // Hash a user's password
+    public async Task<bool> ChangeUserPasswordAsync(ObjectId userId, string oldPassword, string newPassword)
+    {
+        var user = await _userStorage.GetUserByIdAsync(userId);
+
+        if (user == null || !VerifyPassword(user, oldPassword))
+        {
+            return false;
+        }
+
+        var newHashedPassword = HashPassword(newPassword);
+        return await _userStorage.UpdateUserPasswordAsync(userId, newHashedPassword);
+    }
+
+    public bool VerifyPassword(UserProfile user, string password)
+    {
+        // Implement the password verification logic here, comparing the hashed password with the stored hash
+        return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+    }
+
     public string HashPassword(string password)
     {
-        var user = new UserProfile();  // Dummy user object, only for hashing
-        return _passwordHasher.HashPassword(user, password);
+        // Hash the password using a secure method like BCrypt
+        return BCrypt.Net.BCrypt.HashPassword(password);
     }
 
-    // Verify if the entered password matches the hashed password
-    public bool VerifyPassword(UserProfile user, string enteredPassword)
+    public async Task CreateUserAsync(UserProfile userProfile)
     {
-        var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, enteredPassword);
-        return result == PasswordVerificationResult.Success;
+        await _userStorage.CreateUserAsync(userProfile);
+    }
+
+    public async Task<List<UserProfile>> GetUsersWithPublicProfilesAsync(ObjectId userId)
+    {
+        return await _userStorage.GetUsersWithPublicProfilesAsync(userId);
+    }
+
+    public async Task<UserProfile> GetUserByUsernameAsync(string username)
+    {
+        return await _userStorage.GetUserByUsernameAsync(username);
+
     }
 }

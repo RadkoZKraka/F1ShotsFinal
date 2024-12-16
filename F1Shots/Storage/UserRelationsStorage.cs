@@ -1,0 +1,93 @@
+﻿// Storage/FriendshipStorage.cs
+using MongoDB.Driver;
+using MongoDB.Bson;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using F1Shots.Models;
+
+public class UserRelationsStorage
+{
+    private readonly IMongoCollection<UserRelation> _friendshipCollection;
+
+    public UserRelationsStorage(IMongoDatabase database)
+    {
+        _friendshipCollection = database.GetCollection<UserRelation>("UserRelations");
+    }
+
+    // Confirm a friendship
+    public async Task<List<UserRelation>> GetConfirmedAndPublicFriendsAsync(ObjectId userId)
+    {
+        return await _friendshipCollection
+            .Find(f => (f.InitiationUserId == userId || f.RecipientUserId == userId) && f.Status == UserRelationStatus.Accepted)
+            .ToListAsync();
+    }
+
+
+    // Get all friendships (confirmed and pending)
+    public async Task<List<UserRelation>> GetFriendsAsync(ObjectId userId)
+    {
+        var friends = await _friendshipCollection.Find(
+            f => f.InitiationUserId == userId || f.RecipientUserId == userId
+        ).ToListAsync();
+        return friends;
+    }
+
+    // Get confirmed friendships
+    public async Task<List<UserRelation>> GetConfirmedFriendsAsync(ObjectId userId)
+    {
+        // Find friendships where either User1Id or User2Id is the given userId, and IsConfirmed is true
+        var confirmedFriends = await _friendshipCollection.Find(
+            f => ((f.InitiationUserId == userId || f.RecipientUserId == userId) && f.Status == UserRelationStatus.Accepted)
+        ).ToListAsync();
+
+        return confirmedFriends;
+    }
+
+
+    // Get pending friend requests
+    public async Task<List<UserRelation>> GetPendingFriendsAsync(ObjectId userId)
+    {
+        var pendingFriends = await _friendshipCollection.Find(
+            f => (f.InitiationUserId == userId || f.RecipientUserId == userId) && !(f.Status == UserRelationStatus.Accepted)
+        ).ToListAsync();
+        return pendingFriends;
+    }
+
+    public async Task<UserRelation> GetFriendshipByIdAsync(ObjectId userId, ObjectId friendId)
+    {
+        // Find the friendship where userId is the InitiationUserId and friendId is the RecipientUserId
+        var filter = Builders<UserRelation>.Filter.And(
+            Builders<UserRelation>.Filter.Eq(f => f.InitiationUserId, userId),
+            Builders<UserRelation>.Filter.Eq(f => f.RecipientUserId, friendId)
+        );
+
+        // Get the friendship in one direction
+        var friendship = await _friendshipCollection.Find(filter).FirstOrDefaultAsync();
+
+        return friendship; // Return null if no friendship is found
+    }
+
+
+    public async Task AddFriendshipAsync(UserRelation userRelation)
+    {
+        // Insert the friendship record into the database
+        await _friendshipCollection.InsertOneAsync(userRelation);
+    }
+
+    public async Task UpdateFriendshipAsync(UserRelation userRelation)
+    {
+        var update = Builders<UserRelation>.Update
+            .Set(f => f.Status, userRelation.Status); // Set the status field to the new status
+
+        await _friendshipCollection.UpdateOneAsync(
+            f => f.Id == userRelation.Id, // Filter to find the friendship by its ID
+            update // Update definition
+        );
+
+    }
+
+    public async Task<UserRelationStatus> GetUserRelationStatus(ObjectId userId, ObjectId visitingUserId)
+    {
+        throw new NotImplementedException();
+    }
+}
