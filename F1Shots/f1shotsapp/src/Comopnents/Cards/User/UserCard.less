@@ -1,31 +1,110 @@
-﻿.user-card {
+﻿/* Main container for the user card */
+.user-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 16px;
-  text-align: center;
-  border-radius: 8px;
-  transition: box-shadow 0.3s ease;
+  border-radius: 12px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  margin-bottom: 16px;
+
+  /* On hover: */
   &:hover {
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
+}
+
+/* Username link styling */
+.username-link {
+  font-weight: 600;
+  color: #3c4a5f;
+  text-decoration: none;
+  transition: color 0.3s ease;
+
+  &:hover {
+    color: #0077cc;
+  }
+}
+
+/* Admin badge styling */
+.admin-badge {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #f1c40f;
+  margin-left: 8px;
+}
+
+/* Typography for user card title */
+.user-card-title {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+}
+.user-card-link {
+  text-decoration: none;  /* Remove underline */
+  display: block;         /* Make the entire card clickable */
+}
+
+.user-card {
+  padding: 16px;
+  cursor: pointer;       /* Change cursor to pointer to indicate it's clickable */
 }
 
 .user-card-title {
-  margin: 0;
   display: flex;
-  justify-content: center;
   align-items: center;
-  gap: 8px;
-}
-
-.username-link {
-  text-decoration: none;
-  color: #3f51b5;
-  font-weight: 600;
-  &:hover {
-    text-decoration: underline;
-  }
 }
 
 .admin-badge {
-  font-size: 0.875rem;
-  color: #f50057; 
+  margin-left: 8px;
+  color: #ff9800; /* Gold color for the admin badge */
+}
+
+.user-card-link {
+  text-decoration: none;
+}
+
+.user-card {
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  width: 100%;
+}
+ 
+.user-card:hover {
+  background-color: #f5f5f5;
+}
+
+.user-card-title {
+  font-weight: bold;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.admin-badge {
+  font-size: 14px;
+  color: gold;
+  margin-left: 8px;
+}
+
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+  .user-card {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .user-card-title {
+    font-size: 0.875rem;
+  }
+  
 }

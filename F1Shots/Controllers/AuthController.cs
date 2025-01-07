@@ -86,6 +86,21 @@ namespace F1Shots.Controllers
 
             return Ok("User registered successfully.");
         }
+        [HttpGet("check-username")]
+        public async Task<IActionResult> CheckUsernameAvailability([FromQuery] string username)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                return BadRequest("Username cannot be empty.");
+            }
+
+            // Check if the username already exists
+            var exists = await _userService.CheckIfUsernameExistsAsync(username);
+        
+
+
+            return Ok(new { isTaken = exists });
+        }
     }
 
 

@@ -15,19 +15,10 @@ public class AddFriendRequest
     
 }
 
-public class ConfirmFriendRequest
+public class FriendResponseRequest
 {
     [Required]
-    public String FriendId { get; set; }
-
-    [Required]
-    public String NotificationId { get; set; } // Added NotificationId
-}
-
-public class RejectFriendRequest
-{
-    [Required]
-    public String FriendId { get; set; }
+    public String FriendUsername { get; set; }
 
     [Required]
     public String NotificationId { get; set; } // Added NotificationId

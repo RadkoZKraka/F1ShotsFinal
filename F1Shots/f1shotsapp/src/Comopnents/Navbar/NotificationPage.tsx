@@ -1,6 +1,6 @@
 ﻿import React, {useEffect, useState} from "react";
 import axios from "axios";
-import Notification from '../Cards/Notification';
+import NotificationCard from '../Cards/Notification/NotificationCard';
 import {Notification as NotificationModel, NotificationStatus, NotificationType} from "../../Models/Notification"; // Import the model
 
 const NotificationPage: React.FC = () => {
@@ -19,19 +19,21 @@ const NotificationPage: React.FC = () => {
                 });
                 
                 // Destructure the response to get the arrays
-                const { notifications, notificationIds, userIds, senderUserIds } = response.data;
 
+                const {notifications, notificationIds, groupIds, userIds, senderUserIds} = response.data;
+                
                 // Map the notifications array using the corresponding notificationIds and userIds
                 const mappedNotifications: NotificationModel[] = notifications.map((notification: any, index: number) => ({
-                    id: notificationIds[index], // Use notificationIds for the ID
+                    notificationId: notificationIds[index], // Use notificationIds for the ID
                     userId: userIds[index],     // Use userIds for the userId
                     senderUserId: senderUserIds[index],     // Use userIds for the userId
+                    groupId: groupIds[index],     // Use userIds for the userId
                     message: notification.message,
                     type: notification.type,
                     status: notification.status,
                     createdAt: notification.createdAt,
                 }));
-
+                console.log(mappedNotifications);
                 // Update the state with the mapped notifications
                 setNotifications(mappedNotifications);
             } catch (err) {
@@ -41,18 +43,22 @@ const NotificationPage: React.FC = () => {
         };
 
 
-
-
         fetchNotifications();
     }, [token]);
 
     // Filter notifications based on the unread state
     const filteredNotifications = notifications.filter((notification) => {
         if (showUnread) {
-            return notification.status === NotificationStatus.Unread;
+            return notification.status === NotificationStatus.Unread;  // Only show unread notifications
         }
         return true; // Show all notifications if the filter is off
     });
+
+    const removeNotification = (notificationId: string) => {
+        setNotifications((prevNotifications) =>
+            prevNotifications.filter((notif) => notif.notificationId !== notificationId)
+        );
+    };
 
     return (
         <div>
@@ -70,12 +76,12 @@ const NotificationPage: React.FC = () => {
                 </label>
             </div>
 
-            {error && <p style={{ color: "red" }}>{error}</p>}
+            {error && <p style={{color: "red"}}>{error}</p>}
 
             {filteredNotifications.length > 0 ? (
                 <div className="notificationList">
                     {filteredNotifications.map((notification) => (
-                        <Notification key={notification.id} notification={notification} />
+                        <NotificationCard key={notification.notificationId} notification={notification} removeNotification={removeNotification}/>
                     ))}
                 </div>
             ) : (

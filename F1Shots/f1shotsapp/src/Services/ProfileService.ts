@@ -35,19 +35,16 @@ class ProfileService {
             throw error;
         }
     }
-    
+
     async getPublicProfiles(): Promise<Friend[]> {
         try {
             const response = await this.apiClient.get("/friendship/public-profiles");
             return response.data;
-        }
-        catch (error) {
+        } catch (error) {
             console.error("Error fetching public profiles:", error);
             throw error;
         }
-
     }
-    
 }
 
 export default new ProfileService();

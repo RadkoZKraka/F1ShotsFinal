@@ -36,8 +36,8 @@ const SettingsPage = () => {
                 setUserProfile(data);
                 setNewUsername(data.username);
                 setNewEmail(data.email);
-                setIsPublic(data.isPublic ?? false); // Set isPublic state
-                setIsOpen(data.isOpen ?? false); // Set isOpen state
+                setIsPublic(data.public ?? false); // Set isPublic state
+                setIsOpen(data.open ?? false); // Set isOpen state
             } catch (err) {
                 setError("Failed to fetch user profile.");
                 console.error(err);
@@ -101,8 +101,8 @@ const SettingsPage = () => {
                 },
             });
             setUserProfile(response.data);
-            setIsPublic(response.data.isPublic ?? false);
-            setIsOpen(response.data.isOpen ?? false);  // Update isOpen value
+            setIsPublic(response.data.public ?? false);
+            setIsOpen(response.data.open ?? false);  // Update isOpen value
         } catch (err) {
             setError("Failed to update profile.");
             console.error(err);
@@ -122,8 +122,8 @@ const SettingsPage = () => {
                         <Typography variant="h6">Current Profile</Typography>
                         <Typography><strong>Username:</strong> {userProfile.username}</Typography>
                         <Typography><strong>Email:</strong> {userProfile.email}</Typography>
-                        <Typography><strong>Public Profile:</strong> {userProfile.isPublic ? "Yes" : "No"}</Typography>
-                        <Typography><strong>Profile Open:</strong> {userProfile.isOpen ? "Yes" : "No"}</Typography> {/* Display isOpen */}
+                        <Typography><strong>Public Profile:</strong> {userProfile.public ? "Yes" : "No"}</Typography>
+                        <Typography><strong>Profile Open:</strong> {userProfile.open ? "Yes" : "No"}</Typography> {/* Display isOpen */}
                     </Box>
 
                     <form onSubmit={handleProfileUpdate} className="settings-form">

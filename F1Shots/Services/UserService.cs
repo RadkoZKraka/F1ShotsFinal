@@ -73,4 +73,9 @@ public class UserService
         return await _userStorage.GetUserByUsernameAsync(username);
 
     }
+
+    public async Task<bool> CheckIfUsernameExistsAsync(string username)
+    {
+        return await _userStorage.CheckIfUsernameExistsAsync(username);
+    }
 }

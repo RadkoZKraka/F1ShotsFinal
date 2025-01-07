@@ -1,13 +1,14 @@
 ﻿import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Drawer, List, ListItem, ListItemText, Button, Typography } from "@mui/material";
-import NotificationItem from "./NotificationItem"; // Import the NotificationItem component
-import { Notification } from "../../Models/Notification";
+import { Drawer, List, ListItem, ListItemText, Button, Typography, Divider } from "@mui/material";
+import NotificationItem from "../NotificationItem";
+import {Notification} from "../../../Models/Notification";  
 
 interface NotificationDrawerProps {
     isDrawerOpen: boolean;
     closeDrawer: () => void;
     fetchNotifications: () => Promise<void>;
+    userId?: string;
     markAllChecked: () => void;
     notifications: Notification[];
     error: string | null;
@@ -17,6 +18,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                                                                    isDrawerOpen,
                                                                    closeDrawer,
                                                                    fetchNotifications,
+                                                                   userId,
                                                                    markAllChecked,
                                                                    notifications,
                                                                    error,
@@ -41,6 +43,11 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                     width: 350, // Set a fixed width for the drawer
                     maxWidth: "90%", // Ensure it doesn't exceed the viewport width
                     padding: "20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)", // Add subtle shadow for depth
+                    transition: "all 0.3s ease-in-out", // Smooth transition
                 },
             }}
         >
@@ -48,13 +55,17 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                 <Typography variant="h6" className="drawer-title">
                     Notifications
                 </Typography>
-                {error && <Typography color="error">{error}</Typography>}
+
+                {error && <Typography color="error" className="error-message">{error}</Typography>}
+
+                {/* Notifications List */}
                 {notifications.length > 0 ? (
                     <List>
                         {notifications.map((notification) => (
                             <NotificationItem
-                                key={notification.id}
+                                key={notification.notificationId}
                                 notification={notification}
+                                userId={userId}
                                 onActionCompleted={handleActionCompleted}
                             />
                         ))}
@@ -63,19 +74,51 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                     <Typography>No new notifications.</Typography>
                 )}
 
+                {/* Divider to separate actions from the content */}
+                <Divider sx={{ margin: "20px 0" }} />
+
+                {/* Drawer Buttons */}
                 <div className="drawer-buttons">
-                    <Button variant="contained" onClick={fetchNotifications}>
+                    <Button
+                        variant="contained"
+                        fullWidth
+                        onClick={fetchNotifications}
+                        sx={{ marginBottom: "10px" }}
+                    >
                         Get unread notifications
                     </Button>
-                    <Button variant="outlined" onClick={() => { handleViewAllNotifications(); closeDrawer(); }}>
+                    <Button
+                        variant="outlined"
+                        fullWidth
+                        onClick={() => { handleViewAllNotifications(); closeDrawer(); }}
+                        sx={{ marginBottom: "10px" }}
+                    >
                         View All Notifications
                     </Button>
-                    <Button variant="contained" color="primary" onClick={markAllChecked}>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        fullWidth
+                        onClick={markAllChecked}
+                        sx={{ marginBottom: "10px" }}
+                    >
                         Mark All Checked
                     </Button>
                 </div>
 
-                <Button onClick={closeDrawer} className="closeButton">
+                {/* Close Button */}
+                <Button
+                    onClick={closeDrawer}
+                    className="closeButton"
+                    variant="text"
+                    sx={{
+                        alignSelf: "flex-end",
+                        color: "gray",
+                        fontWeight: "bold",
+                        padding: "8px",
+                        textTransform: "none",
+                    }}
+                >
                     Close
                 </Button>
             </div>

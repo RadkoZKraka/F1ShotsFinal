@@ -1,12 +1,13 @@
-﻿// Layout.tsx
-import React from "react";
-
+﻿import React, { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
-import Navbar from "../Navbar/Navbar";
 import AlertManager from "../../Managers/AlertManager";
+import {useAuth} from "../../AuthContext";
+import Navbar from "../Navbar/Navbar/Navbar";
 
 const Layout = () => {
-    const token = localStorage.getItem("authToken");
+    const { token } = useAuth();
+
+
 
     return (
         <div>

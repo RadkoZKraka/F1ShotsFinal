@@ -28,5 +28,6 @@ public enum UserRelationStatus
     Accepted,
     Rejected,
     Favourite,
-    Banned
+    Banned,
+    None
 }

@@ -1,39 +1,81 @@
 ﻿.group-edit {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: #fafafa;
-  padding: 20px;
-}
+  .group-edit-paper {
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #fff;
+  }
 
-.group-edit-card {
-  padding: 40px;
-  width: 100%;
-  max-width: 600px;
-  background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
+  .title {
+    font-weight: 600;
+    font-size: 24px;
+    text-align: center;
+    color: #3f51b5;
+  }
 
-.title {
-  font-weight: 600;
-  color: #333;
-  text-align: center;
-}
+  .form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
 
-.action-buttons {
-  margin-top: 20px;
-}
+  .group-name-input {
+    font-size: 16px;
+  }
 
-.loading-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
+  .action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 24px;
+  }
 
-.error-message {
-  color: #f44336;
-  margin-top: 10px;
+  .MuiButton-contained {
+    font-size: 16px;
+    padding: 12px 0;
+    background-color: #3f51b5;
+    color: #fff;
+
+    &:hover {
+      background-color: #303f9f;
+    }
+  }
+
+  .MuiButton-outlined {
+    font-size: 16px;
+    padding: 12px 0;
+    color: #3f51b5;
+    border-color: #3f51b5;
+
+    &:hover {
+      background-color: #f1f1f1;
+    }
+  }
+
+  .MuiFormControlLabel-root {
+    font-size: 14px;
+  }
+
+  .loading-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  .admin-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .remove-btn {
+    font-size: 12px;  /* Keep font size small */
+    padding: 2px 6px; /* Reduce padding further */
+    min-width: 0;     /* Ensure the button width shrinks to fit the content */
+    width: auto;      /* Allow button to auto-adjust to content */
+    height: auto;     /* Let the height adjust to the content */
+    text-transform: none;  /* Remove uppercase styling for a more compact look */
+    white-space: nowrap;   /* Prevent text from wrapping */
+  }
+
+
 }

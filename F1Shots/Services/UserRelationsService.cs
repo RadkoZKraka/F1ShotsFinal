@@ -17,7 +17,10 @@ public class UserRelationsService
         _userStorage = userStorage;
     }
 
-// Method to get confirmed friends
+    public async Task CreateRelation(UserRelation userRelation)
+    {
+        await _userRelationsStorage.AddRelationAsync(userRelation);
+    }
     public async Task<List<UserProfile>> GetConfirmedFriendsAsUsersAsync(ObjectId userId)
     {
         // Fetch confirmed friendships from FriendshipStorage
@@ -53,22 +56,6 @@ public class UserRelationsService
     }
 
 
-    // Confirm a friendship: User1 confirms the request from User2
-    // public async Task<bool> ConfirmFriendshipAsync(ObjectId user1Id, ObjectId user2Id)
-    // {
-    //     var result = await _friendshipStorage.ConfirmFriendshipAsync(user1Id, user2Id);
-    //
-    //     if (result)
-    //     {
-    //         // Create notification for both users about the confirmation
-    //         await _notificationService.CreateNotificationAsync(user1Id, "friend_confirmation", $"You are now friends with {user2Id}.");
-    //         await _notificationService.CreateNotificationAsync(user2Id, "friend_confirmation", $"You are now friends with {user1Id}.");
-    //     }
-    //
-    //     return result;
-    // }
-    
-
     // Get confirmed friends
     public async Task<List<UserRelation>> GetConfirmedFriendsAsync(ObjectId userId)
     {
@@ -91,4 +78,15 @@ public class UserRelationsService
         return await _userRelationsStorage.GetFriendshipByIdAsync(userId, visitingUserId);
     }
 
+
+    public async Task BanUser(UserRelation userRelation)
+    {
+        await _userRelationsStorage.UpdateFriendshipAsync(userRelation);
+    }
+
+    public async Task UpdateRelationStatus(UserRelation userRelation)
+    {
+        await _userRelationsStorage.UpdateFriendshipAsync(userRelation);
+
+    }
 }

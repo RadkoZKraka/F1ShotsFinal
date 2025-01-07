@@ -31,6 +31,7 @@ namespace F1Shots.Models
         public List<string> PlayersUserNames { get; set; } // List of player usernames
         public List<int> Years { get; set; } // Years the group wants to participate in
         public bool Public { get; set; } // Group visibility (public or private)
+        public bool Open { get; set; } // Group visibility (public or private)
 
         // Constructor to initialize the list properties to avoid null reference errors
         public GroupResponse()

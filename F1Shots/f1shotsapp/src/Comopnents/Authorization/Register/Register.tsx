@@ -11,7 +11,25 @@ const Register = () => {
     const [errorMessage, setErrorMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [passwordsMatch, setPasswordsMatch] = useState(true);
+    const [usernameError, setUsernameError] = useState(''); // Track username error
     const navigate = useNavigate(); // Initialize navigate
+
+    const checkUsernameAvailability = async (username: string) => {
+        if (username.length > 2) {  // Trigger check only when username is more than 2 characters
+            try {
+                const response = await axios.get(`https://localhost:44388/api/auth/check-username?username=${username}`);
+                if (response.data.isTaken) {
+                    setUsernameError('Username is already taken');
+                } else {
+                    setUsernameError('');
+                }
+            } catch (error) {
+                setUsernameError('Error checking username availability');
+            }
+        } else {
+            setUsernameError('');
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -26,6 +44,11 @@ const Register = () => {
             return;
         }
 
+        if (usernameError) {
+            setErrorMessage('Please fix the username error');
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -35,7 +58,8 @@ const Register = () => {
                 password,
             });
             if (response.status === 200) {
-                navigate('/login'); // Redirect to login page after successful registration
+                // Redirect to landing page after successful registration
+                navigate('/landing');
             }
         } catch (error: unknown) {
             if (error instanceof axios.AxiosError && error.response) {
@@ -48,6 +72,13 @@ const Register = () => {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newUsername = e.target.value;
+        setUsername(newUsername);
+        setUsernameError('');
+        checkUsernameAvailability(newUsername); // Check username availability
     };
 
     const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,9 +97,10 @@ const Register = () => {
                         type="text"
                         placeholder="Enter your username"
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        onChange={handleUsernameChange}
                         required
                     />
+                    {usernameError && <p className="error-message">{usernameError}</p>}
                 </div>
                 <div className="input-group">
                     <label>Email</label>
@@ -105,7 +137,7 @@ const Register = () => {
                 </div>
                 {errorMessage && <p className="error-message">{errorMessage}</p>}
                 <div>
-                    <button type="submit" disabled={isLoading || !passwordsMatch}>
+                    <button type="submit" disabled={isLoading || !passwordsMatch || !!usernameError}>
                         {isLoading ? 'Registering...' : 'Register'}
                     </button>
                 </div>

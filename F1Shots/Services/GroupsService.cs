@@ -38,4 +38,25 @@ public class GroupService
         return await _groupStorage.CheckIfGroupExists(groupName);
 
     }
+
+    public async Task<Group> UpdateGroupAsync(Group group)
+    {
+        return await _groupStorage.UpdateGroupAsync(group);
+    }
+
+    public async Task<bool> CheckIfNameExistsAsync(string name)
+    {
+        return await _groupStorage.CheckIfNameExistsAsync(name);
+    }
+
+    public async Task DeleteGroupAsync(ObjectId groupObjectId)
+    {
+        await _groupStorage.DeleteGroupAsync(groupObjectId);
+    }
+    
+
+    public async Task<Group> GetGroupByGroupnameAsync(string groupName)
+    {
+        return await _groupStorage.GetGroupByGroupnameAsync(groupName);
+    }
 }

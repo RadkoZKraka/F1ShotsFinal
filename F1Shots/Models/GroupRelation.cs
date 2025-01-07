@@ -6,7 +6,8 @@ public class GroupRelation
     [BsonId] public ObjectId Id { get; set; }
 
     // User1 is the person who initiated the friend request
-    public ObjectId UserId { get; set; }
+    public ObjectId UserToBeInvitedId { get; set; }
+    public ObjectId UserRequestingJoinId { get; set; }
 
     // User2 is the recipient of the friend request
     public ObjectId GroupId { get; set; }
@@ -20,10 +21,14 @@ public class GroupRelation
 
 public enum GroupRelationStatus
 {
-    Pending,
+    InvitePending,
+    JoinPending,
     Accepted,
-    Rejected,
-    Banned
+    InviteRejected,
+    JoinRejected,
+    Banned,
+    GroupBanned,
+    None
 }
 public enum GroupRelationRequest
 {

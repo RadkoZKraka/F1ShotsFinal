@@ -81,4 +81,14 @@ public class UserStorage
     {
         return await _users.Find(u => u.Username == username).FirstOrDefaultAsync();
     }
+
+    public async Task<bool> CheckIfUsernameExistsAsync(string username)
+    {
+        return await _users.Find(u => u.Username == username).AnyAsync();
+    }
+
+    public async Task<string> GetUsernameByIdAsync(ObjectId userId)
+    {
+        return await _users.Find(u => u.Id == userId).Project(u => u.Username).FirstOrDefaultAsync();
+    }
 }

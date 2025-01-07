@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
     Container,
     Typography,
@@ -16,54 +16,57 @@ import { User } from "../../Models/User";
 import { Group } from "../../Models/Group";
 import { Friend } from "../../Models/Friend";
 
-
 import "./LandingPage.less";
 import ProfileService from "../../Services/ProfileService";
 import FriendshipService from "../../Services/FriendshipService";
 import GroupService from "../../Services/GroupService";
 import AddFriendModal from "../Modals/AddFriendModal";
+import RequestJoinModal from "../Modals/RequestJoinModal"; // Import the new modal
 
 const LandingPage = () => {
     const [user, setUser] = useState<User | null>(null);
     const [userGroups, setUserGroups] = useState<Group[] | null>(null);
     const [friends, setFriends] = useState<Friend[] | null>(null);
     const [publicProfiles, setPublicProfiles] = useState<Friend[] | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
+    const [isRequestJoinModalOpen, setIsRequestJoinModalOpen] = useState(false); // State for the new modal
+    const [addError, setAddError] = useState<string | null>(null); // Error state for the join request modal
     const navigate = useNavigate();
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [userData, friends, publicProfiles, myGroups] = await Promise.all([
-                    ProfileService.getUserProfile(),
-                    FriendshipService.getAllFriends(),
-                    ProfileService.getPublicProfiles(),
-                    GroupService.getMyGroups(),
-                ]);
-                setUser(userData);
-                setFriends(friends);
-                setPublicProfiles(publicProfiles);
-                setUserGroups(myGroups);
-            } catch (err) {
-                console.error("Failed to fetch data:", err);
-                navigate("/login");
-            }
-        };
+    const fetchData = async () => {
+        try {
+            const [userData, friends, publicProfiles, myGroups] = await Promise.all([
+                ProfileService.getUserProfile(),
+                FriendshipService.getAllFriends(),
+                ProfileService.getPublicProfiles(),
+                GroupService.getMyGroups(),
+            ]);
+            setUser(userData);
+            setFriends(friends);
+            setPublicProfiles(publicProfiles);
+            setUserGroups(myGroups);
+        } catch (err) {
+            console.error("Failed to fetch data:", err);
+            navigate("/login");
+        }
+    };
 
+    useEffect(() => {
         fetchData();
     }, [navigate]);
 
     const handleFriendAdded = () => {
-        // Only spread if friends is not null
         if (friends) {
-            setFriends([...friends]); // Example, adapt as needed
+            setFriends([...friends]);
         } else {
-            // If friends is null, initialize it with the new friend
             setFriends(null);
         }
     };
 
+    const handleJoinRequested = () => {
+        // Handle actions after a successful join request
+        fetchData(); // Refetch groups after the request
+    };
 
     return (
         <Container className="landing-page">
@@ -74,9 +77,23 @@ const LandingPage = () => {
                     </Typography>
 
                     <Paper className="card">
-                        <Typography variant="h5" className="section-title">
-                            My Groups
-                        </Typography>
+                        <Box className="section-header">
+                            <Typography variant="h5" className="section-title">
+                                <Link to="/groups" style={{ textDecoration: "none", color: "inherit" }}>
+                                    My Groups
+                                </Link>
+                            </Typography>
+                            <Box className="action-buttons">
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    className="action-button"
+                                    onClick={() => setIsRequestJoinModalOpen(true)} // Open the modal
+                                >
+                                    Request to Join a Group
+                                </Button>
+                            </Box>
+                        </Box>
                         {userGroups ? (
                             userGroups.length > 0 ? (
                                 <GroupList groups={userGroups} />
@@ -98,17 +115,23 @@ const LandingPage = () => {
                     </Paper>
 
                     <Paper className="card">
-                        <Typography variant="h5" className="section-title">
-                            My Friends
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            className="action-button"
-                            onClick={() => setIsModalOpen(true)}
-                        >
-                            Search for Friends
-                        </Button>
+                        <Box className="section-header">
+                            <Typography variant="h5" className="section-title">
+                                <Link to="/friends" style={{ textDecoration: "none", color: "inherit" }}>
+                                    My Friends
+                                </Link>
+                            </Typography>
+                            <Box className="action-buttons">
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    className="action-button"
+                                    onClick={() => setIsAddFriendModalOpen(true)}
+                                >
+                                    Search for Friends
+                                </Button>
+                            </Box>
+                        </Box>
                         {friends ? (
                             <FriendsList friends={friends} />
                         ) : (
@@ -118,7 +141,9 @@ const LandingPage = () => {
 
                     <Paper className="card">
                         <Typography variant="h5" className="section-title">
-                            Public Profiles
+                            <Link to="/public-profiles" style={{ textDecoration: "none", color: "inherit" }}>
+                                Public Profiles
+                            </Link>
                         </Typography>
                         {publicProfiles ? (
                             <PublicProfilesList publicProfiles={publicProfiles} />
@@ -127,11 +152,24 @@ const LandingPage = () => {
                         )}
                     </Paper>
 
-                    {/* Use the AddFriendModal component */}
+                    {/* AddFriendModal */}
                     <AddFriendModal
-                        isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}
+                        isOpen={isAddFriendModalOpen}
+                        onClose={() => {
+                            setIsAddFriendModalOpen(false);
+                            fetchData();
+                        }}
                         onFriendAdded={handleFriendAdded}
+                        username={user.username}
+                    />
+
+                    {/* RequestJoinModal */}
+                    <RequestJoinModal
+                        isOpen={isRequestJoinModalOpen}
+                        onClose={() => setIsRequestJoinModalOpen(false)} // Close modal
+                        onJoinRequested={handleJoinRequested} // Handle after a successful join
+                        addError={addError} // Handle error
+                        setAddError={setAddError} // Manage error state
                     />
                 </>
             ) : (

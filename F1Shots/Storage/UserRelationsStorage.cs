@@ -1,4 +1,6 @@
 ﻿// Storage/FriendshipStorage.cs
+
+using System.Collections;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using System.Collections.Generic;
@@ -55,17 +57,24 @@ public class UserRelationsStorage
 
     public async Task<UserRelation> GetFriendshipByIdAsync(ObjectId userId, ObjectId friendId)
     {
-        // Find the friendship where userId is the InitiationUserId and friendId is the RecipientUserId
-        var filter = Builders<UserRelation>.Filter.And(
-            Builders<UserRelation>.Filter.Eq(f => f.InitiationUserId, userId),
-            Builders<UserRelation>.Filter.Eq(f => f.RecipientUserId, friendId)
+        // Create filters to check both directions
+        var filter = Builders<UserRelation>.Filter.Or(
+            Builders<UserRelation>.Filter.And(
+                Builders<UserRelation>.Filter.Eq(f => f.InitiationUserId, userId),
+                Builders<UserRelation>.Filter.Eq(f => f.RecipientUserId, friendId)
+            ),
+            Builders<UserRelation>.Filter.And(
+                Builders<UserRelation>.Filter.Eq(f => f.InitiationUserId, friendId),
+                Builders<UserRelation>.Filter.Eq(f => f.RecipientUserId, userId)
+            )
         );
 
-        // Get the friendship in one direction
+        // Find the friendship in either direction
         var friendship = await _friendshipCollection.Find(filter).FirstOrDefaultAsync();
 
         return friendship; // Return null if no friendship is found
     }
+
 
 
     public async Task AddFriendshipAsync(UserRelation userRelation)
@@ -86,8 +95,13 @@ public class UserRelationsStorage
 
     }
 
-    public async Task<UserRelationStatus> GetUserRelationStatus(ObjectId userId, ObjectId visitingUserId)
+    public async Task AddRelationAsync(UserRelation userRelation)
     {
-        throw new NotImplementedException();
+        await _friendshipCollection.InsertOneAsync(userRelation);
+    }
+
+    public async Task<List<UserRelation>> GetBannedUsersAsync(ObjectId userId)
+    {
+        return await _friendshipCollection.Find(f => f.InitiationUserId == userId && f.Status == UserRelationStatus.Banned).ToListAsync();
     }
 }

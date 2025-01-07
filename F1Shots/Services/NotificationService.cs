@@ -51,9 +51,9 @@ public class NotificationService
     }
 
     // Mark a notification as checked (read)
-    public async Task MarkAsCheckedAsync(ObjectId notificationId)
+    public async Task ToggleRead(ObjectId notificationId)
     {
-        await _notificationStorage.UpdateNotificationCheckedStatusAsync(notificationId, true);
+        await _notificationStorage.ToggleNotificationCheckedStatusAsync(notificationId);
     }
 
     // Get only unchecked notifications
@@ -66,5 +66,15 @@ public class NotificationService
     {
         return await _notificationStorage.GetUnreadNotificationsByUserIdAsync(userId);
 
+    }
+
+    public async Task<Notification> GetFriendRequestByUsernames(string requestFriend1Username, string requestFriend2Username)
+    {
+        return await _notificationStorage.GetFriendRequestByUsernames(requestFriend1Username, requestFriend2Username);
+    }
+
+    public async Task DeleteNotificationAsync(ObjectId notificationIdObj)
+    {
+        await _notificationStorage.DeleteNotificationAsync(notificationIdObj);
     }
 }

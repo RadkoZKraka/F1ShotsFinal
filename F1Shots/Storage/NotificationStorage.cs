@@ -33,10 +33,25 @@ public class NotificationStorage
     }
 
     // Mark a notification as checked
-    public async Task UpdateNotificationCheckedStatusAsync(ObjectId notificationId, bool checkedStatus)
+    public async Task ToggleNotificationCheckedStatusAsync(ObjectId notificationId)
     {
-        var update = Builders<Notification>.Update.Set(n => n.Status, NotificationStatus.Read);
-        await _notificationCollection.UpdateOneAsync(n => n.Id == notificationId, update);
+        var notificationStatus = _notificationCollection.Find(n => n.Id == notificationId).FirstOrDefault().Status;
+
+        if (notificationStatus == NotificationStatus.Read)
+        {
+            var update1 = Builders<Notification>.Update.Set(n => n.Status, NotificationStatus.Unread);
+            var result1 = await _notificationCollection.UpdateOneAsync(n => n.Id == notificationId, update1);
+            return;
+        }
+        
+        if (notificationStatus == NotificationStatus.Unread)
+        {
+            var update2 = Builders<Notification>.Update.Set(n => n.Status, NotificationStatus.Read);
+            var result1 = await _notificationCollection.UpdateOneAsync(n => n.Id == notificationId, update2);
+            return;
+        }
+        
+        return;
     }
 
     public async Task AddNotificationAsync(Notification notification)
@@ -48,7 +63,7 @@ public class NotificationStorage
     public async Task<List<Notification>> GetUnreadNotificationsByUserIdAsync(ObjectId userId)
     {
         return await _notificationCollection
-            .FindAsync(n => n.UserIds.Contains(userId) && n.Status != NotificationStatus.Read).Result.ToListAsync();
+            .FindAsync(n => n.UserIds.Contains(userId) && n.Status != NotificationStatus.Read && n.Status != NotificationStatus.ReadAndResponded).Result.ToListAsync();
     }
 
     public async Task<Notification> GetNotificationById(ObjectId notificationId)
@@ -61,9 +76,49 @@ public class NotificationStorage
         var update = Builders<Notification>.Update
             .Set(n => n.Status, notification.Status); // Set the status field to the new status
 
-        await _notificationCollection.UpdateOneAsync(
+        var result = await _notificationCollection.UpdateOneAsync(
             n => n.Id == notification.Id, // Filter to find the friendship by its ID
             update // Update definition
         );
+        return;
+    }
+
+    public async void UpdateGroupInNotificationsAsync(Group updatedGroup)
+    {
+        var update = Builders<Notification>.Update
+            .Set(n => n.GroupId, updatedGroup.Id)
+            .Set(n => n.Message, $"You have been invited to join {updatedGroup.Name}."); // Update the Group field
+
+        // Find notifications with the updatedGroup.Id and update them
+        var filter = Builders<Notification>.Filter.Eq(n => n.GroupId, updatedGroup.Id); 
+
+        var result = await _notificationCollection.UpdateManyAsync(
+            filter,  // Use the filter to find notifications with the matching group Id
+            update   // Apply the update to those notifications
+        );
+        
+        return;
+    }
+
+    public async Task<Notification> GetFriendRequestByUsernames(string requestFriend1Username, string requestFriend2Username)
+    {
+        var notification = _notificationCollection.Find(n =>
+            (n.SenderUserId == ObjectId.Parse(requestFriend1Username) && n.UserIds.Contains(ObjectId.Parse(requestFriend2Username))) ||
+            (n.SenderUserId == ObjectId.Parse(requestFriend2Username) && n.UserIds.Contains(ObjectId.Parse(requestFriend1Username)))
+        ).ToList();
+
+         return notification.FirstOrDefault();
+    }
+
+    public async Task<Notification> GetNotificationByGroupIdAndUserId(ObjectId userId, ObjectId groupId)
+    {
+        return await _notificationCollection.Find(n => n.UserIds.Contains(userId) && n.GroupId == groupId).FirstOrDefaultAsync();
+    }
+
+    public async Task DeleteNotificationAsync(ObjectId notificationId)
+    {
+        var result = await _notificationCollection.DeleteOneAsync(n => n.Id == notificationId);
+
+        return;
     }
 }

@@ -9,16 +9,20 @@ import GroupsPage from "./Comopnents/Groups/GroupsPage/GroupsPage";
 import FriendsPage from "./Comopnents/Friends/FriendsPage/FriendsPage";
 import SettingsPage from "./Comopnents/Authorization/SettingsPage/SettingsPage";
 import PublicProfilePage from "./Comopnents/Profiles/PublicProfilePage/PublicProfilePage";
+import PrivateProfilePage from "./Comopnents/Profiles/PrivateProfilePage/PrivateProfilePage";
 import Login from "./Comopnents/Authorization/Login/Login";
 import Register from "./Comopnents/Authorization/Register/Register";
 import NotificationPage from "./Comopnents/Navbar/NotificationPage";
 import GroupPage from "./Comopnents/Groups/GroupPage/GroupPage";
 import CreateGroup from "./Comopnents/Groups/CreateGroup/CreateGroup";
 import GroupEdit from "./Comopnents/Groups/GroupEdit/GroupEdit";
+import {AuthProvider} from "./AuthContext";
+import PublicProfilesPage from "./Comopnents/Profiles/PublicProfilesPage/PublicProfilesPage";
 
 
 function App() {
     return (
+        <AuthProvider>
         <Router>
             <Routes>
                 {/* Define the Layout for all routes that need it */}
@@ -33,6 +37,8 @@ function App() {
                     <Route path="/friends" element={<FriendsPage />} />
                     <Route path="/settings" element={<SettingsPage />} /> {/* New Route */}
                     <Route path="/public-profile/:username" element={<PublicProfilePage />} />
+                    <Route path="/public-profiles" element={<PublicProfilesPage />} />
+                    <Route path="/private-profile/:userId" element={<PrivateProfilePage />} />
                     <Route path="/notifications" element={<NotificationPage />} />
 
                 </Route>
@@ -42,6 +48,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
             </Routes>
         </Router>
+        </AuthProvider>
     );
 }
 

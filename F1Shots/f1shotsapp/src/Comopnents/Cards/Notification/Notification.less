@@ -1,0 +1,87 @@
+﻿.notification {
+  position: relative;
+  .deleteNotificationButton {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: red;
+    color: white;
+    border: none;
+    padding: 2px 5px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 12px;
+    width: auto;
+  }
+}
+
+.notificationImportant {
+  background-color: #ffe3e3;
+  border-left: 5px solid #ff0000;
+}
+
+.notificationNormal {
+  background-color: #e3f2ff;
+  border-left: 5px solid #008cfc;
+}
+
+.statusUnread {
+  font-weight: bold;
+}
+
+.statusRead {
+  color: #666;
+}
+
+.notificationMessage {
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.notificationDate {
+  font-size: 12px;
+  color: #888;
+}
+
+.notificationButtons {
+  margin-top: 15px;
+  display: flex; /* Flexbox to arrange buttons horizontally */
+  justify-content: flex-start; /* Align buttons to the left */
+  gap: 10px; /* Space between buttons */
+}
+
+.notificationButton {
+  padding: 8px 15px;
+  font-size: 14px; /* Slightly larger text */
+  background-color: #008cfc;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  min-width: 90px; /* Set a consistent width for all buttons */
+  text-align: center; /* Center the text */
+}
+
+.notificationButton:hover {
+  background-color: #005f8e;
+}
+
+.notificationButton:focus {
+  outline: none; /* Remove focus outline */
+}
+
+/* Styling for Visit Group button */
+.visitGroupButton {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px; /* Add some space above */
+}
+
+.visitGroupButton .notificationButton {
+  background-color: #4caf50; /* Green for Visit Group */
+  min-width: 120px; /* Make the Visit Group button a little wider */
+}
+
+.visitGroupButton .notificationButton:hover {
+  background-color: #388e3c; /* Darker green when hovered */
+}

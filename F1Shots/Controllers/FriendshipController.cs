@@ -46,21 +46,44 @@ public class FriendshipController : ControllerBase
 
         return Ok("Friend request sent.");
     }
-
-    // Confirm a friendship
-    [HttpPost("confirm")]
-    public async Task<IActionResult> ConfirmFriendRequest([FromBody] ConfirmFriendRequest request)
+    
+    [HttpPost("cancel-request/{friendUsername}")]
+    public async Task<IActionResult> CancelRequest([FromRoute] string friendUsername)
     {
         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!ObjectId.TryParse(request.NotificationId, out ObjectId notificationId) ||
-            !ObjectId.TryParse(request.FriendId, out ObjectId requestFriendId) ||
-            !ObjectId.TryParse(userIdString, out ObjectId userId))
+        if (string.IsNullOrEmpty(userIdString) || !ObjectId.TryParse(userIdString, out ObjectId userId))
         {
-            return BadRequest("Invalid notificationId or userId.");
+            return Unauthorized("User not authenticated.");
         }
 
+        var friendUser = await _userService.GetUserByUsernameAsync(friendUsername);
+        try
+        {
+            await _commonService.CancelFriendRequestAsync(userId, friendUser.Id);
+        }
+        catch (Exception e)
+        {
+            return StatusCode(500, e.Message);
+        }
+
+
+        return Ok("Friend request sent.");
+    }
+
+    // Confirm a friendship
+    [HttpPost("confirm/{friendId}")]
+    public async Task<IActionResult> ConfirmFriendRequest([FromRoute] string friendId)
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!ObjectId.TryParse(userIdString, out ObjectId userId) ||
+            !ObjectId.TryParse(friendId, out ObjectId friendObjectId))
+        {
+            return BadRequest("Invalid friendId or userId.");
+        }
+        var userToConfirm = await _userService.GetUserByIdAsync(friendObjectId);
+
         // Proceed with the logic to confirm the friend request
-        var result = await _commonService.ConfirmFriendRequestAsync(userId, requestFriendId, notificationId);
+        var result = await _commonService.ConfirmFriendRequestAsync(userId, userToConfirm.Id);
         if (result)
         {
             return Ok("Friend request confirmed.");
@@ -69,19 +92,19 @@ public class FriendshipController : ControllerBase
         return BadRequest("Failed to confirm the friend request.");
     }
 
-    [HttpPost("reject")]
-    public async Task<IActionResult> RejectFriendRequest([FromBody] RejectFriendRequest request)
+    [HttpPost("reject/{friendId}")]
+    public async Task<IActionResult> RejectFriendRequest([FromRoute] string friendId)
     {
         var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!ObjectId.TryParse(request.NotificationId, out ObjectId notificationId) ||
-            !ObjectId.TryParse(request.FriendId, out ObjectId requestFriendId) ||
-            !ObjectId.TryParse(userIdString, out ObjectId userId))
+        if (!ObjectId.TryParse(userIdString, out ObjectId userId) ||
+            !ObjectId.TryParse(friendId, out ObjectId friendObjectId))
         {
-            return BadRequest("Invalid notificationId or userId.");
+            return BadRequest("Invalid friendId or userId.");
         }
+        var userToReject = await _userService.GetUserByIdAsync(friendObjectId);
 
         // Proceed with the logic to confirm the friend request
-        var result = await _commonService.RejectFriendRequestAsync(userId, requestFriendId, notificationId);
+        var result = await _commonService.RejectFriendRequestAsync(userId, userToReject.Id);
         if (result)
         {
             return Ok("Friend request rejected.");
@@ -90,7 +113,104 @@ public class FriendshipController : ControllerBase
         return BadRequest("Failed to reject the friend request.");
     }
 
-    // Confirm a friendship
+    [HttpPost("ban/{friendUsername}")]
+    public async Task<IActionResult> BanUser([FromRoute] string friendUsername)
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !ObjectId.TryParse(userIdString, out ObjectId userId))
+        {
+            return Unauthorized("User not authenticated.");
+        }
+
+        var friend = await _userService.GetUserByUsernameAsync(friendUsername);
+
+        var userToBan = await _userService.GetUserByUsernameAsync(friendUsername);
+
+        var relation = await _userRelationsService.GetFriendshipByIdAsync(userId, friend.Id);
+
+        if (relation == null)
+        {
+            var banUser = new UserRelation
+            {
+                InitiationUserId = userId,
+                RecipientUserId = userToBan.Id,
+                Status = UserRelationStatus.Banned,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _userRelationsService.CreateRelation(banUser);
+        }
+        
+        
+        relation.InitiationUserId = userId;
+        relation.RecipientUserId = userToBan.Id;
+        relation.Status = UserRelationStatus.Banned;
+
+        // Proceed with the logic to confirm the friend request
+        await _userRelationsService.UpdateRelationStatus(relation);
+
+
+        return Ok();
+    }
+
+    [HttpPost("unban/{friendUsername}")]
+    public async Task<IActionResult> UnBanUser([FromRoute] string friendUsername)
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !ObjectId.TryParse(userIdString, out ObjectId userId))
+        {
+            return Unauthorized("User not authenticated.");
+        }
+
+        var friend = await _userService.GetUserByUsernameAsync(friendUsername);
+
+        var userToUnban = await _userService.GetUserByUsernameAsync(friendUsername);
+
+        var relation = await _userRelationsService.GetFriendshipByIdAsync(userId, friend.Id);
+
+        if (relation == null)
+        {
+            var banUser = new UserRelation
+            {
+                InitiationUserId = userId,
+                RecipientUserId = userToUnban.Id,
+                Status = UserRelationStatus.None,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _userRelationsService.CreateRelation(banUser);
+        }
+
+        relation.Status = UserRelationStatus.None;
+
+        // Proceed with the logic to confirm the friend request
+        await _userRelationsService.UpdateRelationStatus(relation);
+
+
+        return Ok();
+    }
+
+    [HttpPost("delete-friend/{friendUsername}")]
+    public async Task<IActionResult> DeleteFriend([FromRoute] string friendUsername)
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !ObjectId.TryParse(userIdString, out ObjectId userId))
+        {
+            return Unauthorized("User not authenticated.");
+        }
+
+
+        var friend = await _userService.GetUserByUsernameAsync(friendUsername);
+        var relation = await _userRelationsService.GetFriendshipByIdAsync(userId, friend.Id);
+
+        relation.Status = UserRelationStatus.None;
+
+        // Proceed with the logic to confirm the friend request
+        await _userRelationsService.UpdateRelationStatus(relation);
+
+
+        return Ok();
+    }
 
 
     // Get all friends (confirmed or pending)
@@ -104,7 +224,7 @@ public class FriendshipController : ControllerBase
         }
 
         var friends = await _userRelationsService.GetConfirmedFriendsAsUsersAsync(userId);
-        return Ok(friends.Select(f => new { f.Id, f.Username, f.Email }));
+        return Ok(friends.Select(f => new { Id = f.Id.ToString(), f.Username, f.Email }));
     }
 
     // Get all users with public profiles
@@ -117,11 +237,11 @@ public class FriendshipController : ControllerBase
             return Unauthorized("User not authenticated.");
         }
 
-        // Fetch users with public profiles
         var publicProfiles = await _userService.GetUsersWithPublicProfilesAsync(userId);
+        
+        var validProfiles = await _commonService.GetValidProfilesAsync(userId, publicProfiles);
 
-        // Return only relevant details like Id and Username
-        return Ok(publicProfiles.Select(profile => new { profile.Id, profile.Username }));
+        return Ok(validProfiles.Select(profile => new { Id = profile.Id.ToString(), profile.Username }));
     }
 
     [HttpGet("check-friend-request/{username}")]
@@ -133,6 +253,15 @@ public class FriendshipController : ControllerBase
         // Get the user by username (the profile being visited)
         var visitingUser = await _userService.GetUserByUsernameAsync(username);
 
+        if (visitingUser == null)
+        {
+            return Ok(new
+            {
+                status = 7,
+                notificationId =  ""
+            });
+        }
+
         if (string.IsNullOrEmpty(userIdString) || !ObjectId.TryParse(userIdString, out ObjectId userId))
         {
             return Unauthorized("User not authenticated.");
@@ -140,51 +269,113 @@ public class FriendshipController : ControllerBase
 
         if (userIdString == visitingUser.Id.ToString())
         {
-            return Ok(3);
+            return Ok(new
+            {
+                status = 3,
+                notificationId = ""
+            });
         }
 
         // Check if the current user has already sent a friend request to the visiting user
-        var userRelation1 = await _userRelationsService.GetFriendshipByIdAsync(userId, visitingUser.Id);
-        var userRelation2 = await _userRelationsService.GetFriendshipByIdAsync(visitingUser.Id, userId);
+        var userRelation = await _userRelationsService.GetFriendshipByIdAsync(userId, visitingUser.Id);
 
+        var notification = await _commonService.GetFriendRequestNotificationAsync(userId, visitingUser.Id);
 
-        if (userRelation1 == null && userRelation2 == null)
+        if (userRelation == null)
         {
-            return Ok(0);
+            return Ok(new
+            {
+                status = 0,
+                notificationId = notification?.Id.ToString() ?? ""
+            });
         }
 
-        if (userRelation1 != null && userRelation1.Status == UserRelationStatus.Accepted)
+        if (userRelation is { Status: UserRelationStatus.None or UserRelationStatus.Rejected })
         {
-            return Ok(4);
+            return Ok(new
+            {
+                status = 0,
+                notificationId = notification?.Id.ToString()
+            });
         }
 
-        if (userRelation2 != null && userRelation2.Status == UserRelationStatus.Accepted)
+        if (userRelation is { Status: UserRelationStatus.Accepted })
         {
-            return Ok(4);
-        }
-
-        if (userRelation1 != null && userRelation1.Status == UserRelationStatus.Banned)
-        {
-            return Ok(5);
-        }
-
-        if (userRelation2 != null && userRelation2.Status == UserRelationStatus.Banned)
-        {
-            return Ok(5);
+            return Ok(new
+            {
+                status = 4,
+                notificationId = notification?.Id.ToString()
+            });
         }
 
 
-        if (userRelation2 == null && userRelation1.Status == UserRelationStatus.Pending)
+        if (userRelation is { Status: UserRelationStatus.Banned})
         {
-            return Ok(2);
+            if (userRelation.InitiationUserId == userId)
+            {
+                return Ok(new
+                {
+                    status = 6,
+                    notificationId = notification?.Id.ToString()
+                });
+            }
+            if (userRelation.RecipientUserId == visitingUser.Id)
+            {
+                return Ok(new
+                {
+                    status = 5,
+                    notificationId = notification?.Id.ToString()
+                });
+            }
         }
 
-        if (userRelation1 == null && userRelation2.Status == UserRelationStatus.Pending)
+
+        if (userRelation is { Status: UserRelationStatus.Pending })
         {
-            return Ok(1);
+            if (userRelation.InitiationUserId == userId)
+            {
+                return Ok(new
+                {
+                    status = 2,
+                    notificationId = notification?.Id.ToString()
+                });
+            }
+            if (userRelation.RecipientUserId == visitingUser.Id)
+            {
+                return Ok(new
+                {
+                    status = 1,
+                    notificationId = notification?.Id.ToString()
+                });
+            }
         }
 
 
         return Ok("No friend request exchanged.");
+    }
+
+    [HttpGet("friends-invited/{groupId}")]
+    public async Task<IActionResult> GetFriendsInvitedToGroup(string groupId)
+    {
+        if (!ObjectId.TryParse(groupId, out ObjectId groupObjectId))
+        {
+            return BadRequest("Invalid group ID.");
+        }
+
+        var friends = await _commonService.GetUsersInvitedToGroupAsync(groupObjectId);
+        return Ok(friends.Select(f => new { Id = f.Id.ToString(), f.Username, f.Email }));
+    }
+    
+    [HttpGet("banned-users")]
+    public async Task<IActionResult> GetBannedUsers()
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !ObjectId.TryParse(userIdString, out ObjectId userId))
+        {
+            return Unauthorized("User not authenticated.");
+        }
+
+        var bannedUsers = await _commonService.GetBannedUsersAsync(userId);
+        return Ok(bannedUsers.Select(f => new { Id = f.Id.ToString(), f.Username}));
     }
 }

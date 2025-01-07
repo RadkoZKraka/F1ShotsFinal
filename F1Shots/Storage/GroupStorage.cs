@@ -17,7 +17,7 @@ public class GroupStorage
     // Method to get groups by user ID
     public async Task<List<Group>> GetGroupsByUserIdAsync(ObjectId userId)
     {
-        var filter = Builders<Group>.Filter.AnyEq(g => g.AdminUserIds, userId); // Assuming AdminUserIds is a list of user IDs
+        var filter = Builders<Group>.Filter.AnyEq(g => g.PlayersIds, userId); // Assuming AdminUserIds is a list of user IDs
         var groups = await _groups.Find(filter).ToListAsync();
         return groups;
     }
@@ -56,5 +56,38 @@ public class GroupStorage
     public async Task<bool> CheckIfGroupExists(string groupName)
     {
         return await _groups.Find(g => g.Name == groupName).AnyAsync();
+    }
+
+    public async Task<Group> UpdateGroupAsync(Group group)
+    {
+        var filter = Builders<Group>.Filter.Eq(g => g.Id, group.Id);
+        var update = Builders<Group>.Update
+            .Set(g => g.Name, group.Name)
+            .Set(g => g.Public, group.Public)
+            .Set(g => g.Open, group.Open)
+            .Set(g => g.PlayersUserNames, group.PlayersUserNames)
+            .Set(g => g.PlayersIds, group.PlayersIds)
+            .Set(g => g.AdminUserIds, group.AdminUserIds);
+
+        await _groups.UpdateOneAsync(filter, update);
+
+        return group;
+    }
+
+    public async Task<bool> CheckIfNameExistsAsync(string name)
+    {
+        return await _groups.Find(g => g.Name == name).AnyAsync();
+    }
+
+    public async Task DeleteGroupAsync(ObjectId groupObjectId)
+    {
+        var result = await _groups.DeleteOneAsync(g => g.Id == groupObjectId);
+        return;
+    }
+
+
+    public async Task<Group> GetGroupByGroupnameAsync(string groupName)
+    {
+        return await _groups.Find(g => g.Name == groupName).FirstOrDefaultAsync();
     }
 }

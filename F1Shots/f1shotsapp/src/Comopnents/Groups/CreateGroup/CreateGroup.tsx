@@ -1,8 +1,9 @@
-﻿import React, { useState } from "react";
+﻿import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "./CreateGroup.less";
 import { Group, Motorsport } from "../../../Models/Group";
 import GroupService from "../../../Services/GroupService";
+import { debounce } from "@mui/material";
 
 const CreateGroup = () => {
     const currentYear = new Date().getFullYear();
@@ -10,7 +11,26 @@ const CreateGroup = () => {
     const [isPublic, setIsPublic] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [nameTaken, setNameTaken] = useState(false); // Tracks if name is already taken
+    const [isChecking, setIsChecking] = useState(false); // Tracks if the name check is in progress
     const navigate = useNavigate();
+
+    // Debounced function to check if the group name exists
+    const checkGroupNameAvailability = useCallback(
+        debounce(async (name: string) => {
+            setIsChecking(true); // Set loading state to true when checking availability
+            try {
+                const exists = await GroupService.checkGroupNameExists(name);
+                setNameTaken(exists); // Set the state if the name exists
+            } catch (err) {
+                setNameTaken(false); // Handle any errors by assuming the name is not taken
+                setError("Error checking group name.");
+            } finally {
+                setIsChecking(false); // Reset loading state after the check is done
+            }
+        }, 500), // 500ms debounce delay
+        []
+    );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,7 +63,13 @@ const CreateGroup = () => {
     };
 
     const handleGroupNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setGroupName(e.target.value);
+        const newName = e.target.value;
+        setGroupName(newName);
+
+        if (newName) {
+            checkGroupNameAvailability(newName); // Check if the name exists after every change
+        }
+
         if (error) setError(null); // Clear the error if there's any change in the group name
     };
 
@@ -51,6 +77,7 @@ const CreateGroup = () => {
         <div className="create-group-container">
             <h1>Create a New Group</h1>
             {error && <p className="error-message">{error}</p>}
+            {nameTaken && <p className="error-message">This group name is already taken. Please choose a different name.</p>}
             <form onSubmit={handleSubmit} className="create-group-form">
                 <div className="form-group">
                     <label>Group Name</label>
@@ -86,7 +113,13 @@ const CreateGroup = () => {
                     <p>{currentYear}</p>
                 </div>
 
-                <button type="submit" className="submit-button">Create Group</button>
+                <button
+                    type="submit"
+                    className="submit-button"
+                    disabled={nameTaken || isChecking} // Disable if name is taken or checking is in progress
+                >
+                    {isChecking ? "Checking..." : "Create Group"} {/* Show loading text when checking */}
+                </button>
             </form>
         </div>
     );

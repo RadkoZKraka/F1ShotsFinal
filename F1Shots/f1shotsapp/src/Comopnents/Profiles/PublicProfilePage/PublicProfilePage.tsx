@@ -1,9 +1,10 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-import { Button, Typography, Container, Paper, CircularProgress } from "@mui/material";
+import { Button, Typography, Container, Paper, Menu, MenuItem, IconButton } from "@mui/material";
 import GroupList from "../../Groups/GroupList/GroupList";
-import FriendshipService from "../../../Services/FriendshipService"; // Import FriendshipService
+import FriendshipService from "../../../Services/FriendshipService";
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 export enum FriendshipStatus {
     None = 0,
@@ -18,9 +19,12 @@ export enum FriendshipStatus {
 const PublicProfilePage: React.FC = () => {
     const { username } = useParams<{ username: string }>();
     const [profile, setProfile] = useState<any>(null);
+    const [notificationId, setNotificationId] = useState<any>(null);
     const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatus | null>(null);
     const [publicGroups, setPublicGroups] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const openMenu = Boolean(anchorEl);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -36,8 +40,10 @@ const PublicProfilePage: React.FC = () => {
         const fetchFriendshipStatus = async () => {
             try {
                 if (username) {
-                    const status = await FriendshipService.getFriendshipStatus(username);
-                    setFriendshipStatus(status);
+                    const data = await FriendshipService.getFriendshipStatus(username);
+                    console.log(data)
+                    setNotificationId(data.notificationId);
+                    setFriendshipStatus(data.status);
                 }
             } catch (err) {
                 setError("Failed to fetch friendship status.");
@@ -75,7 +81,7 @@ const PublicProfilePage: React.FC = () => {
     const handleConfirmFriendRequest = async () => {
         try {
             if (username) {
-                await FriendshipService.confirmFriendRequest(username);
+                await FriendshipService.confirmFriendRequest(username, notificationId);
                 setFriendshipStatus(FriendshipStatus.Friends);
             }
         } catch (err) {
@@ -86,7 +92,7 @@ const PublicProfilePage: React.FC = () => {
     const handleRejectFriendRequest = async () => {
         try {
             if (username) {
-                await FriendshipService.rejectFriendRequest(username);
+                await FriendshipService.rejectFriendRequest(username, notificationId);
                 setFriendshipStatus(FriendshipStatus.None);
             }
         } catch (err) {
@@ -97,8 +103,7 @@ const PublicProfilePage: React.FC = () => {
     const handleUnbanUser = async () => {
         try {
             if (username) {
-                // Uncomment if the unban API is implemented
-                // await FriendshipService.unbanUser(username);
+                await FriendshipService.unbanUser(username);
                 setFriendshipStatus(FriendshipStatus.None);
             }
         } catch (err) {
@@ -109,7 +114,6 @@ const PublicProfilePage: React.FC = () => {
     const handleBanUser = async () => {
         try {
             if (username) {
-                // Implement the ban logic in your backend
                 await FriendshipService.banUser(username);
                 setFriendshipStatus(FriendshipStatus.UserBanned); // Update status after banning
             }
@@ -118,36 +122,156 @@ const PublicProfilePage: React.FC = () => {
         }
     };
 
+    const handleDeleteFriend = async () => {
+        try {
+            if (username) {
+                await FriendshipService.deleteFriend(username);
+                setFriendshipStatus(FriendshipStatus.None); // Update status after deleting friend
+            }
+        } catch (err) {
+            setError("Failed to delete friend.");
+        }
+    };
+
+    const handleCancelFriendRequest = async () => {
+        try {
+            if (username) {
+                await FriendshipService.cancelFriendRequest(username);
+                setFriendshipStatus(FriendshipStatus.None); // Reset status to None after canceling
+            }
+        } catch (err) {
+            setError("Failed to cancel friend request.");
+        }
+    };
+
+    const getFriendshipStatusText = () => {
+        switch (friendshipStatus) {
+            case FriendshipStatus.Friends:
+                return "You are friends!";
+            case FriendshipStatus.ThatsYou:
+                return "That's your public profile!";
+            case FriendshipStatus.Sent:
+                return "Friend request sent!";
+            case FriendshipStatus.Received:
+                return "Friend request received!";
+            case FriendshipStatus.Banned:
+                return "You are banned from interacting with this user.";
+            case FriendshipStatus.UserBanned:
+                return "You banned this user. You cannot interact with them.";
+            default:
+                return "Error loading friendship status.";
+        }
+    };
+
+    const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+    };
+
     return (
         <Container maxWidth="lg" className="public-profile-container">
             <Paper className="profile-paper">
-                <Typography variant="h4" gutterBottom>
-                    Public Profile: {username}
-                </Typography>
+                <div className="profile-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                        <Typography variant="h4" gutterBottom>
+                            {username}
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontSize: "1rem", color: "gray" }}>
+                            Public Profile
+                        </Typography>
+                    </div>
+
+                    {friendshipStatus !== FriendshipStatus.Banned && (
+                        <IconButton
+                            edge="end"
+                            aria-label="options"
+                            onClick={handleMenuClick}
+                            aria-controls={openMenu ? 'profile-menu' : undefined}
+                            aria-haspopup="true"
+                            size="small"
+                            sx={{
+                                padding: 0,
+                                minWidth: 'auto',
+                                borderRadius: '50%',
+                                width: 32,
+                            }}
+                        >
+                            <MoreVertIcon />
+                        </IconButton>
+                    )}
+                    <Menu
+                        id="profile-menu"
+                        anchorEl={anchorEl}
+                        open={openMenu}
+                        onClose={handleMenuClose}
+                        
+                    >
+                        {friendshipStatus !== FriendshipStatus.UserBanned ? (
+                            <MenuItem onClick={handleBanUser} disabled={friendshipStatus === FriendshipStatus.ThatsYou}>Ban User</MenuItem>
+                        ) : (
+                            <MenuItem onClick={handleUnbanUser}>Unban User</MenuItem>
+                        )}
+                        {friendshipStatus === FriendshipStatus.Friends && (
+                            <MenuItem onClick={handleDeleteFriend}>
+                                Remove from Friends
+                            </MenuItem>
+                        )}
+                    </Menu>
+                </div>
+
+                {friendshipStatus !== null && (
+                    <Typography variant="body1" sx={{ fontSize: "1rem", color: "gray" }}>
+                        {getFriendshipStatusText()}
+                    </Typography>
+                )}
+
                 {error && (
                     <Typography variant="body1" color="error" className="error-message">
                         {error}
                     </Typography>
                 )}
-                <Typography variant="h6" gutterBottom>
-                    Public Groups
-                </Typography>
-                {publicGroups.length > 0 ? (
-                    <GroupList groups={publicGroups} />
-                ) : (
-                    <Typography variant="body1">No public groups found for this user.</Typography>
+
+                {friendshipStatus !== FriendshipStatus.Banned && (
+                    <>
+                        <Typography variant="h6" gutterBottom>
+                            Public Groups
+                        </Typography>
+                        {publicGroups.length > 0 ? (
+                            <GroupList groups={publicGroups} />
+                        ) : (
+                            <Typography variant="body1">No public groups found for this user.</Typography>
+                        )}
+                    </>
                 )}
 
                 <div className="friend-action-container">
-                    {friendshipStatus === null ? (
-                        <CircularProgress color="primary" />
-                    ) : friendshipStatus === FriendshipStatus.Sent ? (
-                        <Typography variant="body1">Friend request sent!</Typography>
-                    ) : friendshipStatus === FriendshipStatus.Received ? (
+                    {friendshipStatus === FriendshipStatus.None && (
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleAddFriend}
+                            className="add-friend-button"
+                        >
+                            Add Friend
+                        </Button>
+                    )}
+
+                    {friendshipStatus === FriendshipStatus.Sent && (
+                        <Button
+                            variant="outlined"
+                            color="secondary"
+                            onClick={handleCancelFriendRequest}
+                            className="cancel-request-button"
+                        >
+                            Cancel Friend Request
+                        </Button>
+                    )}
+
+                    {friendshipStatus === FriendshipStatus.Received && (
                         <div className="friend-request-actions">
-                            <Typography variant="body1" paragraph>
-                                Friend request received! You can confirm or reject it below:
-                            </Typography>
                             <Button
                                 variant="contained"
                                 color="primary"
@@ -165,47 +289,6 @@ const PublicProfilePage: React.FC = () => {
                                 Reject
                             </Button>
                         </div>
-                    ) : friendshipStatus === FriendshipStatus.ThatsYou ? (
-                        <Typography variant="body1">You are already friends!</Typography>
-                    ) : friendshipStatus === FriendshipStatus.Friends ? (
-                        <Typography variant="body1">You are friends!</Typography>
-                    ) : friendshipStatus === FriendshipStatus.Banned ? (
-                        <div className="banned-actions">
-                            <Typography variant="body1" paragraph>
-                                You have been banned from interacting with this user. You can unban them below:
-                            </Typography>
-                            <Button
-                                variant="contained"
-                                color="secondary"
-                                onClick={handleUnbanUser}
-                                className="unban-button"
-                            >
-                                Unban
-                            </Button>
-                        </div>
-                    ) : friendshipStatus === FriendshipStatus.UserBanned ? (
-                        <Typography variant="body1">User is banned. You cannot interact with them.</Typography>
-                    ) : (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleAddFriend}
-                            className="add-friend-button"
-                        >
-                            Add Friend
-                        </Button>
-                    )}
-
-                    {/* Ban user button */}
-                    {friendshipStatus !== FriendshipStatus.UserBanned && friendshipStatus !== FriendshipStatus.Banned && (
-                        <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={handleBanUser}
-                            className="ban-button"
-                        >
-                            Ban User
-                        </Button>
                     )}
                 </div>
             </Paper>

@@ -1,0 +1,46 @@
+﻿.drawer-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.drawer-title {
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.error-message {
+  color: #d32f2f;
+  margin-bottom: 15px;
+}
+
+.drawer-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.drawer-buttons button {
+  width: 100%;
+  font-size: 1rem;
+  text-transform: none;  // Disable text transformation
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #1976d2;  // Hover effect for buttons
+  }
+}
+
+.closeButton {
+  margin-top: 20px;
+  align-self: flex-end;
+  color: #555;
+  font-size: 1rem;
+}
+
+.drawer-content .MuiDivider-root {
+  margin: 20px 0;
+}
