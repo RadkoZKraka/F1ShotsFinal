@@ -72,7 +72,6 @@ const RequestJoinModal: React.FC<RequestJoinModalProps> = ({
                 case GroupRelationStatus.GroupBanned:
                     setAddError("You are banned this group.");
                     return;
-                case 405:
                 case GroupRelationStatus.None:
                 case GroupRelationStatus.InviteRejected:
                     // Proceed with the join request if the relation status is "None"
@@ -82,7 +81,7 @@ const RequestJoinModal: React.FC<RequestJoinModalProps> = ({
                     return;
                 case 404:
                 case undefined:
-                    setAddError("Group not found, is not open to join or you are already in that group.");
+                    setAddError("Group not found or is not open to join.");
                     return;
                 default:
                     setAddError("An unexpected error occurred.");

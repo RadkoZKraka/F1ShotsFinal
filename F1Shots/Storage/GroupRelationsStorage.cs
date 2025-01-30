@@ -121,4 +121,15 @@ public class GroupRelationsStorage
 
         return groupRelation;
     }
+
+    public async Task<List<GroupRelation>> GetGroupRelationsByUserIdAndStatusAsync(ObjectId userId, GroupRelationStatus groupStatus)
+    {
+        var filter = Builders<GroupRelation>.Filter.And(
+            Builders<GroupRelation>.Filter.Eq(gr => gr.UserToBeInvitedId, userId),
+            Builders<GroupRelation>.Filter.Eq(gr => gr.Status, groupStatus)
+        );
+
+        var groupRelations = await _groupRelationsCollection.Find(filter).ToListAsync();
+        return groupRelations;
+    }
 }

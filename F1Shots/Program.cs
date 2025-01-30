@@ -1,6 +1,4 @@
 using System.Text;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using F1Shots.Services;
 using F1Shots.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -23,7 +21,7 @@ public class Program
         var mongoDbConnectionString = builder.Configuration.GetSection("MongoDB:ConnectionString").Value;
         var mongoClient = new MongoClient(mongoDbConnectionString);
         var mongoDatabase = mongoClient.GetDatabase(builder.Configuration.GetSection("MongoDB:Database").Value); // Use the Database name from the configuration
-
+        
         // Register IMongoDatabase as a singleton
         builder.Services.AddSingleton<IMongoDatabase>(mongoDatabase);
 
@@ -32,17 +30,21 @@ public class Program
         builder.Services.AddScoped<UserService>();
         builder.Services.AddScoped<UserRelationsService>();
         builder.Services.AddScoped<GroupRelationsService>();
+        builder.Services.AddScoped<GroupPortfolioService>();
         builder.Services.AddScoped<NotificationService>();
         builder.Services.AddScoped<CommonService>();
         
 
         // Register GroupStorage and UserStorage (Scoped to services)
         builder.Services.AddScoped<GroupStorage>();
+        builder.Services.AddScoped<GroupRelationsStorage>();
+        builder.Services.AddScoped<GroupPortfolioStorage>();
         builder.Services.AddScoped<UserStorage>();
         builder.Services.AddScoped<NotificationStorage>();
         builder.Services.AddScoped<UserRelationsStorage>();
-        builder.Services.AddScoped<GroupRelationsStorage>();
-        
+
+        builder.Services.AddHttpClient();
+
 
         builder.Services.AddCors(options =>
         {

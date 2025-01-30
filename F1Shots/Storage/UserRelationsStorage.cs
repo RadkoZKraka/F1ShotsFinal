@@ -104,4 +104,15 @@ public class UserRelationsStorage
     {
         return await _friendshipCollection.Find(f => f.InitiationUserId == userId && f.Status == UserRelationStatus.Banned).ToListAsync();
     }
+
+    public async Task<List<UserRelation>> GetUserRelationsByUserIdAndStatusAsync(ObjectId userId, UserRelationStatus status)
+    {
+        var filter = Builders<UserRelation>.Filter.And(
+            Builders<UserRelation>.Filter.Eq(gr => gr.InitiationUserId, userId),
+            Builders<UserRelation>.Filter.Eq(gr => gr.Status, status)
+        );
+
+        var userRelations = await _friendshipCollection.Find(filter).ToListAsync();
+        return userRelations;
+    }
 }

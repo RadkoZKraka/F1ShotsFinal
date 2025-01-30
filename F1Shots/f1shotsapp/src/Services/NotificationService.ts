@@ -63,11 +63,11 @@ export class NotificationService {
         }
     }
 
-    static async confirmGroupInviteRequest(groupId: string) {
+    static async confirmGroupInviteRequest(notificationGuid: string) {
         try {
             const token = getAuthToken();
             await axios.post(
-                `${baseUrl}/group/confirm-invite/${groupId}`,
+                `${baseUrl}/group/confirm-invite/${notificationGuid}`,
                 {},
                 {
                     headers: {
@@ -81,11 +81,11 @@ export class NotificationService {
         }
     }
 
-    static async rejectGroupInviteRequest(groupId: string) {
+    static async rejectGroupInviteRequest(notificationGuid: string) {
         try {
             const token = getAuthToken();
             await axios.post(
-                `${baseUrl}/group/reject-invite/${groupId}`,
+                `${baseUrl}/group/reject-invite/${notificationGuid}`,
                 {},
                 {
                     headers: {
@@ -99,11 +99,11 @@ export class NotificationService {
         }
     }
 
-    static async confirmGroupJoinRequest(groupId: string) {
+    static async confirmGroupJoinRequest(notificationGuid: string) {
         try {
             const token = getAuthToken();
             await axios.post(
-                `${baseUrl}/group/confirm-join-group/${groupId}`,
+                `${baseUrl}/group/confirm-join-group/${notificationGuid}`,
                 {},
                 {
                     headers: {
@@ -117,11 +117,11 @@ export class NotificationService {
         }
     }
 
-    static async rejectGroupJoinRequest(groupId: string) {
+    static async rejectGroupJoinRequest(notificationGuid: string) {
         try {
             const token = getAuthToken();
             await axios.post(
-                `${baseUrl}/group/reject-join-group/${groupId}`,
+                `${baseUrl}/group/reject-join-group/${notificationGuid}`,
                 {},
                 {
                     headers: {

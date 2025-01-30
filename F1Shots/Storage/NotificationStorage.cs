@@ -22,14 +22,14 @@ public class NotificationStorage
     // Get notifications for a user
     public async Task<List<Notification>> GetNotificationsByUserIdAsync(ObjectId userId)
     {
-        return await _notificationCollection.Find(n => n.UserIds.Contains(userId)).ToListAsync();
+        return await _notificationCollection.Find(n => n.UserId == userId).ToListAsync();
     }
 
     // Get only unchecked notifications for a user
     public async Task<List<Notification>> GetUncheckedNotificationsByUserIdAsync(ObjectId userId)
     {
         return await _notificationCollection
-            .Find(n => n.UserIds.Contains(userId) && n.Status != NotificationStatus.Read).ToListAsync();
+            .Find(n => n.UserId == userId && n.Status != NotificationStatus.Read).ToListAsync();
     }
 
     // Mark a notification as checked
@@ -63,7 +63,7 @@ public class NotificationStorage
     public async Task<List<Notification>> GetUnreadNotificationsByUserIdAsync(ObjectId userId)
     {
         return await _notificationCollection
-            .FindAsync(n => n.UserIds.Contains(userId) && n.Status != NotificationStatus.Read && n.Status != NotificationStatus.ReadAndResponded).Result.ToListAsync();
+            .FindAsync(n => n.UserId == userId && n.Status != NotificationStatus.Read).Result.ToListAsync();
     }
 
     public async Task<Notification> GetNotificationById(ObjectId notificationId)
@@ -74,7 +74,8 @@ public class NotificationStorage
     public async Task UpdateNotificationAsync(Notification notification)
     {
         var update = Builders<Notification>.Update
-            .Set(n => n.Status, notification.Status); // Set the status field to the new status
+            .Set(n => n.Status, notification.Status)
+            .Set(n => n.Responded, notification.Responded); // Set the status field to the new status
 
         var result = await _notificationCollection.UpdateOneAsync(
             n => n.Id == notification.Id, // Filter to find the friendship by its ID
@@ -99,12 +100,28 @@ public class NotificationStorage
         
         return;
     }
+    
+    public async void UpdateUsernameInNotificationsAsync(ObjectId userId, string updatedUsername)
+    {
+        var update = Builders<Notification>.Update
+            .Set(n => n.Message, $"{updatedUsername} has sent you a friend request."); // Update the Group field
+
+        // Find notifications with the updatedGroup.Id and update them
+        var filter = Builders<Notification>.Filter.Eq(n => n.SenderUserId, userId); 
+
+        var result = await _notificationCollection.UpdateManyAsync(
+            filter,  // Use the filter to find notifications with the matching group Id
+            update   // Apply the update to those notifications
+        );
+        
+        return;
+    }
 
     public async Task<Notification> GetFriendRequestByUsernames(string requestFriend1Username, string requestFriend2Username)
     {
         var notification = _notificationCollection.Find(n =>
-            (n.SenderUserId == ObjectId.Parse(requestFriend1Username) && n.UserIds.Contains(ObjectId.Parse(requestFriend2Username))) ||
-            (n.SenderUserId == ObjectId.Parse(requestFriend2Username) && n.UserIds.Contains(ObjectId.Parse(requestFriend1Username)))
+            (n.SenderUserId == ObjectId.Parse(requestFriend1Username) && n.UserId == ObjectId.Parse(requestFriend2Username)) ||
+            (n.SenderUserId == ObjectId.Parse(requestFriend2Username) && n.UserId == ObjectId.Parse(requestFriend1Username))
         ).ToList();
 
          return notification.FirstOrDefault();
@@ -112,7 +129,7 @@ public class NotificationStorage
 
     public async Task<Notification> GetNotificationByGroupIdAndUserId(ObjectId userId, ObjectId groupId)
     {
-        return await _notificationCollection.Find(n => n.UserIds.Contains(userId) && n.GroupId == groupId).FirstOrDefaultAsync();
+        return await _notificationCollection.Find(n => n.UserId == userId && n.GroupId == groupId).FirstOrDefaultAsync();
     }
 
     public async Task DeleteNotificationAsync(ObjectId notificationId)
@@ -120,5 +137,19 @@ public class NotificationStorage
         var result = await _notificationCollection.DeleteOneAsync(n => n.Id == notificationId);
 
         return;
+    }
+
+    public async Task<Notification> GetGroupInviteByGroupIdAndUserIdAsync(ObjectId groupId, ObjectId userInvitedId)
+    {
+        return await _notificationCollection.Find(n => n.GroupId == groupId && n.UserId == userInvitedId).FirstOrDefaultAsync();
+    }
+    public async Task<List<Notification>> GetGroupJoinRequestByGroupIdAndUserIdAsync(ObjectId groupId, ObjectId userRequestingToJoin)
+    {
+        return await _notificationCollection.Find(n => n.GroupId == groupId && n.SenderUserId == userRequestingToJoin).ToListAsync();
+    }
+
+    public async Task<List<Notification>> GetNotificationsByGuidAsync(Guid notificationGuid)
+    {
+        return await _notificationCollection.Find(n => n.Guid == notificationGuid).ToListAsync();
     }
 }

@@ -2,12 +2,14 @@
 
 export interface Notification {
     notificationId: string; // MongoDB ObjectId as string (in frontend, it's usually represented as string)
-    userIds: string[]; // The recipient of the notification (ObjectId as string)
+    notificationGuid: string; // Unique identifier for the notification
+    userId: string; // The recipient of the notification (ObjectId as string)
     senderUserId: string; // The recipient of the notification (ObjectId as string)
     groupId: string; // The group ID (if applicable)
     message: string; // The message content of the notification
     type: NotificationType; // Type of the notification (e.g., FriendRequest, Like, etc.)
     status: NotificationStatus; // Status of the notification (unread, read, etc.)
+    responded: boolean; // Status of the notification (unread, read, etc.)
     createdAt: string; // Timestamp of when the notification was created
 }
 
@@ -16,7 +18,6 @@ export enum NotificationStatus {
     Read = 1,      // Notification has been read
     Archived = 2, // Notification has been archived or dismissed
     Deleted = 3, // Notification has been deleted (can be used if you want to track deletions)
-    ReadAndResponded = 4,// Notification has been read and responded to
 }
 
 export enum NotificationType {

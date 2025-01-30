@@ -15,10 +15,12 @@ namespace F1Shots.Controllers
     public class UserController : ControllerBase
     {
         private readonly UserService _userService;
+        private readonly CommonService _commonService;
 
-        public UserController(UserService userService)
+        public UserController(UserService userService, CommonService commonService)
         {
             _userService = userService;
+            _commonService = commonService;
         }
 
         [HttpGet("profile")]
@@ -57,6 +59,10 @@ namespace F1Shots.Controllers
             }
 
             var result = await _userService.UpdateUserProfileAsync(userId, request);
+            
+
+            
+            _commonService.UpdateUsernameInNotificationsAsync(userId, request.Username);
 
             if (result.IsAcknowledged && result.ModifiedCount == 1)
             {
@@ -109,10 +115,29 @@ namespace F1Shots.Controllers
             if (userProfile == null)
             {
                 return NotFound("User profile not found.");
-            }
+            }   
 
             // Return only public profile fields if necessary
             return Ok(userProfile); // You can return only the public fields, if needed
+        }
+
+        [HttpGet("requests")]
+        public async Task<IActionResult> GetRequests()
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !ObjectId.TryParse(userIdString, out ObjectId userId))
+            {
+                return Unauthorized("User not authenticated.");
+            }
+
+            var requests = await _commonService.GetRequests(userId);
+
+            if (requests == null)
+            {
+                return BadRequest("Failed to get requests.");
+            }
+
+            return Ok(requests);
         }
     }
 }

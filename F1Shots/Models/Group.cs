@@ -1,11 +1,15 @@
 ﻿using MongoDB.Bson;
 using System.Collections.Generic;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace F1Shots.Models
 {
     public class Group
     {
         public ObjectId Id { get; set; }
+        
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string GroupPortfolioId { get; set; }
         public string Name { get; set; }
         public List<ObjectId> AdminUserIds { get; set; } // List of admin user IDs
         public List<ObjectId> PlayersIds { get; set; } // List of admin user IDs

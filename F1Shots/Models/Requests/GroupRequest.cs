@@ -5,7 +5,7 @@
     public List<string> AdminUserIds { get; set; } // List of admin user IDs (strings)
     public List<string> PlayersIds { get; set; } // List of player IDs (strings)
     public List<string> PlayersUserNames { get; set; }
-    public List<int> Years { get; set; }
+    public int Year { get; set; }
     public Motorsport Motorsport { get; set; } // Years the group wants to participate in
 
     public bool Public { get; set; }

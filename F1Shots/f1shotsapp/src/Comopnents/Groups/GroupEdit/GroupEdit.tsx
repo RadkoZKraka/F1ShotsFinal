@@ -1,4 +1,4 @@
-﻿import React, {useState, useEffect, useRef} from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
     Container,
@@ -17,7 +17,7 @@ import {
     Dialog,
     DialogActions,
     DialogContent,
-    DialogTitle
+    DialogTitle,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import GroupService from "../../../Services/GroupService";
@@ -26,8 +26,13 @@ import AddUserModal from "../../Modals/AddUserModal";
 import FriendshipService from "../../../Services/FriendshipService";
 import "./GroupEdit.less";
 import UserCard from "../../Cards/User/UserCard";
+import BannedUsersModal from "../../Modals/BannedUsersModal";
+import { useAuth } from "../../../Contexts/AuthContext";
+import ProfileService from "../../../Services/ProfileService";
+import { User } from "../../../Models/User";
 
 const GroupEdit = () => {
+    const [currentUser, setCurrentUser] = useState<User>();
     const { groupId } = useParams();
     const navigate = useNavigate();
     const [group, setGroup] = useState<Group | null>(null);
@@ -43,29 +48,51 @@ const GroupEdit = () => {
     const [addingUser, setAddingUser] = useState<boolean>(false);
     const [addError, setAddError] = useState<string | null>(null);
     const [groupNameExists, setGroupNameExists] = useState<boolean>(false);
+    const [bannedUsers, setBannedUsers] = useState<{ id: string; username: string }[]>([]);
+    const [openBannedModal, setOpenBannedModal] = useState<boolean>(false);
+    const [deleteConfirmation, setDeleteConfirmation] = useState(""); // State for input validation
 
-    // State for delete confirmation dialog
+    const [changesSaved, setChangesSaved] = useState<boolean>(false);
+    const [initialGroupName, setInitialGroupName] = useState<string | null>(null);
+    const [initialIsPublic, setInitialIsPublic] = useState<boolean>(false);
+    const [initialIsOpen, setInitialIsOpen] = useState<boolean>(false);
+    const [initialAdmins, setInitialAdmins] = useState<string[]>([]);
+
     const [openDeleteDialog, setOpenDeleteDialog] = useState<boolean>(false);
 
-    const [initialGroupName, setInitialGroupName] = useState<string | null>(null); // Track the initial group name
+    const [isCheckingGroupName, setIsCheckingGroupName] = useState<boolean>(false);
+    const [groupNameCheckLoading, setGroupNameCheckLoading] = useState<boolean>(false);
+
+    const [openKickDialog, setOpenKickDialog] = useState<boolean>(false);
+    const [userToKick, setUserToKick] = useState<{ id: string; username: string } | null>(null);
+
 
     useEffect(() => {
         const fetchGroup = async () => {
             try {
+                const currentUser = await ProfileService.getUserProfile();
+
+                setCurrentUser(currentUser);
                 const fetchedGroup = await GroupService.getGroupByIdAsync(groupId!);
+
                 setGroup(fetchedGroup);
                 setGroupName(fetchedGroup.name);
                 setInitialGroupName(fetchedGroup.name);
                 setIsPublic(fetchedGroup.public);
+                setInitialIsPublic(fetchedGroup.public);
                 setIsOpen(fetchedGroup.open);
+                setInitialIsOpen(fetchedGroup.open);
                 setAdmins(fetchedGroup.adminUserIds);
+                setInitialAdmins(fetchedGroup.adminUserIds);
 
                 const friendsData = await FriendshipService.getAllFriends();
                 setFriends(friendsData);
 
                 const groupRelations = await GroupService.getGroupRelations(groupId);
-                console.log(groupRelations.groupRelations);
-                setGroupRelations(groupRelations.groupRelations); // Ensure this state is initialized
+                setGroupRelations(groupRelations.groupRelations);
+
+                const bannedUsersData = await GroupService.getBannedUsers(groupId);
+                setBannedUsers(bannedUsersData);
 
                 setLoading(false);
             } catch (err) {
@@ -74,21 +101,29 @@ const GroupEdit = () => {
             }
         };
 
-
         fetchGroup();
     }, [groupId]);
 
     useEffect(() => {
         if (groupName !== initialGroupName) {
+            setIsCheckingGroupName(true); // Start immediate validation state
+
             const debounceTimeout = setTimeout(() => {
                 const checkIfGroupNameExists = async () => {
                     if (groupName.trim()) {
+                        setGroupNameCheckLoading(true); // Start loading state
                         try {
                             const exists = await GroupService.checkGroupNameExists(groupName);
                             setGroupNameExists(exists);
                         } catch (error) {
                             setError("Error checking group name.");
+                        } finally {
+                            setGroupNameCheckLoading(false); // End loading state
+                            setIsCheckingGroupName(false); // End immediate validation state
                         }
+                    } else {
+                        setGroupNameExists(false); // Reset state if name is empty
+                        setIsCheckingGroupName(false); // End immediate validation state
                     }
                 };
 
@@ -97,29 +132,65 @@ const GroupEdit = () => {
 
             return () => {
                 clearTimeout(debounceTimeout); // Cleanup timeout on every change of `groupName`
+                setIsCheckingGroupName(false); // Ensure state is reset on cleanup
             };
         }
     }, [groupName, initialGroupName]);
 
-    const players = group?.playersIds.map((id, index) => ({
-        id,
-        username: group?.playersUserNames[index],
-    })) || [];
+    const players =
+        group?.playersIds.map((id, index) => ({
+            id,
+            username: group?.playersUserNames[index],
+        })) || [];
 
     const alreadyAddedUsers = [
         ...admins.map((adminId) => ({ id: adminId, username: "Unknown" })),
         ...players,
-    ]
-        .filter((value, index, self) =>
-            index === self.findIndex((t) => t.id === value.id)
-        )
-        .map((user) => {
-            const player = players.find((player) => player.id === user.id);
-            return {
-                ...user,
-                username: player ? player.username : user.username,
-            };
-        });
+    ].filter((value, index, self) =>
+        index === self.findIndex((t) => t.id === value.id)
+    ).map((user) => {
+        const player = players.find((player) => player.id === user.id);
+        return {
+            ...user,
+            username: player ? player.username : user.username,
+        };
+    });
+
+    // Function to remove a user from the group
+    const handleKickClick = (user: { id: string; username: string }) => {
+        setUserToKick(user);
+        setOpenKickDialog(true);
+    };
+
+    const confirmRemoveUser = async () => {
+        if (!userToKick) return;
+
+        try {
+            await GroupService.removePlayerFromGroup(groupId!, userToKick.id);
+
+            // Remove the user from the group dynamically
+            setGroupRelations((prevRelations) =>
+                prevRelations.filter((relation) => relation.userToBeInvitedId !== userToKick.id)
+            );
+            setAdmins((prevAdmins) => prevAdmins.filter((adminId) => adminId !== userToKick.id));
+            setGroup((prevGroup) => {
+                if (!prevGroup) return prevGroup;
+                return {
+                    ...prevGroup,
+                    playersIds: prevGroup.playersIds.filter((id) => id !== userToKick.id),
+                    playersUserNames: prevGroup.playersUserNames.filter(
+                        (_, index) => prevGroup.playersIds[index] !== userToKick.id
+                    ),
+                };
+            });
+            setError(null); // Reset any previous error
+        } catch (err) {
+            setError("Failed to remove user from the group.");
+        } finally {
+            setOpenKickDialog(false); // Close the confirmation dialog
+            setUserToKick(null); // Reset the user to kick
+        }
+    };
 
     const handleSaveChanges = async () => {
         if (admins.length === 0) {
@@ -134,13 +205,31 @@ const GroupEdit = () => {
                 open: isOpen,
                 adminUserIds: admins,
             });
+
+            // Reset initial values to reflect the saved ones
+            setInitialGroupName(groupName);
+            setInitialIsPublic(isPublic);
+            setInitialIsOpen(isOpen);
+            setInitialAdmins(admins);
+
+            setChangesSaved(true); // Mark the changes as saved
             navigate(`/group/edit/${groupId}`);
         } catch (err) {
             setError("Failed to update group.");
         }
     };
 
+    useEffect(() => {
+        setChangesSaved(false); // Reset changesSaved when any field is modified
+    }, [groupName, isPublic, isOpen, admins]);
+
     const handleAdminToggle = (userId: string) => {
+        // Check if the current user is the only admin
+        if (admins.length === 1 && admins[0] === currentUser?.id && userId === currentUser?.id) {
+            // Prevent unchecking if the current user is the only admin
+            return;
+        }
+
         setAdmins((prevAdmins) => {
             if (prevAdmins.includes(userId)) {
                 return prevAdmins.filter((id) => id !== userId);
@@ -150,31 +239,6 @@ const GroupEdit = () => {
         });
     };
 
-    const handleRemovePlayer = async (userId: string) => {
-        if (group?.playersIds.length === 1) {
-            setError("You cannot remove the last player from the group.");
-            return;
-        }
-
-        try {
-            await GroupService.removePlayerFromGroup(groupId!, userId);
-            setGroup((prevGroup) => {
-                if (!prevGroup) return prevGroup;
-                const updatedPlayersIds = prevGroup.playersIds.filter((id) => id !== userId);
-                const updatedPlayersUserNames = prevGroup.playersUserNames.filter(
-                    (_, index) => prevGroup.playersIds[index] !== userId
-                );
-                return {
-                    ...prevGroup,
-                    playersIds: updatedPlayersIds,
-                    playersUserNames: updatedPlayersUserNames,
-                };
-            });
-        } catch (err) {
-            setError("Failed to remove player from group.");
-        }
-    };
-
     const handleDeleteGroup = async () => {
         try {
             await GroupService.deleteGroup(groupId!);
@@ -182,6 +246,53 @@ const GroupEdit = () => {
         } catch (err) {
             setError("Failed to delete group.");
         }
+    };
+
+    const isSaveDisabled = () => {
+        return (
+            groupName.trim() === "" || // Disable if group name is empty
+            isCheckingGroupName || // Disable during immediate validation
+            groupNameCheckLoading || // Disable when group name check is in progress
+            groupNameExists || // Disable when group name already exists
+            changesSaved || // Disable after changes are saved
+            (
+                groupName === initialGroupName &&
+                isPublic === initialIsPublic &&
+                isOpen === initialIsOpen &&
+                JSON.stringify(admins) === JSON.stringify(initialAdmins)
+            ) // Disable if no changes are made
+        );
+    };
+
+    const handleChangeRelation = (friendUsername: string, isCancel: boolean) => {
+        setGroupRelations((prevRelations) => {
+            console.log("previous relations", prevRelations);
+
+            // Check if the friend already exists in the relations array
+            const updatedRelations = prevRelations.map((relation) => {
+                // If relation exists for the friend, update its status
+                if (relation.userToBeInvitedId === friendUsername) {
+                    return isCancel
+                        ? { ...relation, status: 7 } // Banned/Rejected status if canceled
+                        : { ...relation, status: 0 }; // Update to invite pending if invited
+                }
+                return relation;
+            });
+
+            // If the relation doesn't exist, add a new one with all required fields
+            const existingRelation = updatedRelations.some((r) => r.userToBeInvitedId === friendUsername);
+
+            if (!existingRelation) {
+                updatedRelations.push({
+                    userRequestingJoinId: "", // or use the valid requesting join ID here
+                    userToBeInvitedId: friendUsername,
+                    status: isCancel ? 5 : 0,  // Banned/Rejected if canceled, Invited if added
+                });
+            }
+
+            console.log("updated relations", updatedRelations);
+            return updatedRelations;
+        });
     };
 
     if (loading) {
@@ -201,7 +312,7 @@ const GroupEdit = () => {
                     </IconButton>
                 </Box>
 
-                <Typography variant="h4" gutterBottom className="title" style={{ marginLeft: 16 }}>
+                <Typography variant="h4" gutterBottom className="title">
                     Edit Group
                 </Typography>
                 {error && <Typography color="error" variant="body2">{error}</Typography>}
@@ -221,7 +332,7 @@ const GroupEdit = () => {
                     <FormControlLabel
                         control={
                             <Checkbox
-                                checked={isPublic !== undefined ? isPublic : false}
+                                checked={isPublic}
                                 onChange={(e) => setIsPublic(e.target.checked)}
                                 color="primary"
                             />
@@ -232,7 +343,7 @@ const GroupEdit = () => {
                     <FormControlLabel
                         control={
                             <Checkbox
-                                checked={isOpen !== undefined ? isOpen : false}
+                                checked={isOpen}
                                 onChange={(e) => setIsOpen(e.target.checked)}
                                 color="primary"
                             />
@@ -241,30 +352,32 @@ const GroupEdit = () => {
                     />
 
                     <Typography variant="h6" gutterBottom>
-                        Manage Admins
+                        Manage Users
                     </Typography>
                     <List>
-                        {group?.playersUserNames?.map((username, index) => (
-                            <React.Fragment key={group.playersIds[index]}>
+                        {players.map((player) => (
+                            <React.Fragment key={player.id}>
                                 <ListItem className="admin-list-item">
-                                    <UserCard username={username} />
+                                    <UserCard username={player.username} />
                                     <FormControlLabel
                                         control={
                                             <Checkbox
-                                                checked={admins.includes(group.playersIds[index])}
-                                                onChange={() => handleAdminToggle(group.playersIds[index])}
+                                                checked={admins.includes(player.id)}
+                                                onChange={() => handleAdminToggle(player.id)}
                                                 color="primary"
+                                                disabled={admins.length === 1 && admins[0] === currentUser?.id && player.id === currentUser?.id} // Disable checkbox if current user is the only admin
                                             />
                                         }
                                         label="Admin"
                                     />
                                     <Button
                                         variant="outlined"
-                                        color="secondary"
-                                        onClick={() => handleRemovePlayer(group.playersIds[index])}
-                                        className="remove-btn"
+                                        color="error"
+                                        onClick={() => handleKickClick(player)} // Open confirmation dialog
+                                        sx={{ width: "auto" }}
+                                        disabled={player.id === currentUser?.id} // Disable the button for the current user
                                     >
-                                        Remove
+                                        Kick
                                     </Button>
                                 </ListItem>
                                 <Divider />
@@ -277,10 +390,14 @@ const GroupEdit = () => {
                             variant="contained"
                             color="primary"
                             onClick={handleSaveChanges}
-                            disabled={!groupName.trim() || groupNameExists}
+                            disabled={isSaveDisabled()}
                             fullWidth
                         >
-                            Save Changes
+                            {groupNameCheckLoading ? (
+                                <CircularProgress size={24} color="inherit" />
+                            ) : (
+                                "Save Changes"
+                            )}
                         </Button>
 
                         <Button
@@ -297,9 +414,17 @@ const GroupEdit = () => {
                             color="error"
                             onClick={() => setOpenDeleteDialog(true)}
                             fullWidth
-                            sx={{ marginTop: 2 }}
                         >
                             Delete Group
+                        </Button>
+
+                        <Button
+                            variant="outlined"
+                            color="secondary"
+                            onClick={() => setOpenBannedModal(true)}
+                            fullWidth
+                        >
+                            View Banned Users
                         </Button>
                     </Box>
                 </Box>
@@ -310,31 +435,74 @@ const GroupEdit = () => {
                 onClose={() => setOpenModal(false)}
                 groupId={groupId!}
                 friends={friends}
-                groupRelations={groupRelations} // Updated
+                groupRelations={groupRelations}
                 alreadyAddedUsers={alreadyAddedUsers}
                 addingUser={addingUser}
                 setAddingUser={setAddingUser}
                 addError={addError}
                 setAddError={setAddError}
+                onChangeRelation={handleChangeRelation} // Pass the callback here
             />
 
+            <BannedUsersModal
+                open={openBannedModal}
+                onClose={() => setOpenBannedModal(false)}
+                currentUsername={currentUser!.username}
+                groupId={groupId!}
+                usersBanned={bannedUsers}
+                alreadyAddedUsers={alreadyAddedUsers}
+                setBannedUsers={setBannedUsers}
+            />
 
             <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
                 <DialogTitle>Confirm Delete</DialogTitle>
                 <DialogContent>
-                    <Typography>Are you sure you want to delete this group? This action cannot be undone.</Typography>
+                    <Typography>
+                        Are you sure you want to delete this group? This action cannot be undone.
+                    </Typography>
+                    <Typography sx={{ mt: 2 }}>
+                        Please type the group name to confirm.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        variant="outlined"
+                        margin="normal"
+                        value={deleteConfirmation}
+                        onChange={(e) => setDeleteConfirmation(e.target.value)}
+                        placeholder={`Type "${groupName}" to confirm`}
+                    />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenDeleteDialog(false)} color="primary">
                         Cancel
                     </Button>
-                    <Button onClick={handleDeleteGroup} color="error">
+                    <Button
+                        onClick={handleDeleteGroup}
+                        color="error"
+                        disabled={deleteConfirmation !== groupName} // Enable only if input matches group name
+                    >
                         Delete
                     </Button>
                 </DialogActions>
             </Dialog>
+            <Dialog open={openKickDialog} onClose={() => setOpenKickDialog(false)}>
+                <DialogTitle>Confirm Kick</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to remove {userToKick?.username} from the group? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenKickDialog(false)} color="primary">
+                        Cancel
+                    </Button>
+                    <Button onClick={confirmRemoveUser} color="error">
+                        Confirm
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Container>
-    );
-};
+    )
+}
 
 export default GroupEdit;

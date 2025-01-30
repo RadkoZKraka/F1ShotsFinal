@@ -36,10 +36,12 @@ public class NotificationController : ControllerBase
         return Ok(new
         {
             Notifications = notifications,
+            NotificationsGuids = notifications.Select(n => n.Guid).ToList(),
             NotificationIds = notifications.Select(n => n.Id.ToString()).ToList(),
             GroupIds = notifications.Select(n => n.GroupId.ToString()).ToList(),
-            UserIds = notifications.Select(n => n.UserIds.Select(i => i.ToString())).ToList(),
+            UserIds = notifications.Select(n => n.UserId.ToString()).ToList(),
             SenderUserIds = notifications.Select(n => n.SenderUserId.ToString()).ToList(),
+            Responded = notifications.Select(n => n.Responded.ToString()).ToList(),
         });
     }
 
@@ -59,10 +61,12 @@ public class NotificationController : ControllerBase
         var result = notifications.Select(n => new
         {
             NotificationId = n.Id.ToString(),
+            NotificationGuid = n.Guid.ToString(),
             GroupId = n.GroupId.ToString(),
-            UserIds = n.UserIds.Select(i => i.ToString()).ToList(),
+            UserIds = n.UserId.ToString(),
             SenderUserId = n.SenderUserId.ToString(),
             Status = n.Status,
+            Responded = n.Responded,
             Type = n.Type,
             CreatedAt = n.CreatedAt,
             Message = n.Message

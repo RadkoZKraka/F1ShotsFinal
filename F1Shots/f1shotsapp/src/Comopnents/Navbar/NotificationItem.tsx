@@ -2,7 +2,6 @@
 import {Button, Stack} from "@mui/material";
 import {Notification, NotificationType} from "../../Models/Notification";
 import {NotificationService} from "../../Services/NotificationService";
-import {log} from "node:util";
 
 interface NotificationItemProps {
     notification: Notification;
@@ -11,6 +10,7 @@ interface NotificationItemProps {
 }
 
 const NotificationItem: React.FC<NotificationItemProps> = ({notification, userId, onActionCompleted}) => {
+
     const toggleRead = async () => {
         try {
             await NotificationService.toggleRead(notification.notificationId);
@@ -27,7 +27,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({notification, userId
                 return;
             }
             
-            await NotificationService.confirmFriendRequest(notification.senderUserId);
+            await NotificationService.confirmFriendRequest(notification.notificationGuid);
             onActionCompleted();
         } catch (error) {
             console.error("Failed to confirm friend request:", error);
@@ -39,7 +39,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({notification, userId
                 console.error("User ID is null");
                 return;
             }
-            await NotificationService.rejectFriendRequest(notification.senderUserId);
+            await NotificationService.rejectFriendRequest(notification.notificationGuid);
             onActionCompleted();
         } catch (error) {
             console.error("Failed to reject friend request:", error);
@@ -48,7 +48,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({notification, userId
 
     const handleConfirmGroupInviteRequest = async () => {
         try {
-            await NotificationService.confirmGroupInviteRequest(notification.groupId);
+            await NotificationService.confirmGroupInviteRequest(notification.notificationGuid);
             onActionCompleted();
         } catch (error) {
             console.error("Failed to confirm group invite request:", error);
@@ -57,7 +57,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({notification, userId
 
     const handleRejectGroupInviteRequest = async () => {
         try {
-            await NotificationService.rejectGroupInviteRequest(notification.groupId);
+            await NotificationService.rejectGroupInviteRequest(notification.notificationGuid);
             onActionCompleted();
         } catch (error) {
             console.error("Failed to reject group invite request:", error);
@@ -66,7 +66,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({notification, userId
 
     const handleConfirmGroupJoinRequest = async () => {
         try {
-            await NotificationService.confirmGroupJoinRequest(notification.groupId);
+            await NotificationService.confirmGroupJoinRequest(notification.notificationGuid);
             onActionCompleted();
         } catch (error) {
             console.error("Failed to confirm group join request:", error);
@@ -75,7 +75,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({notification, userId
 
     const handleRejectGroupJoinRequest = async () => {
         try {
-            await NotificationService.rejectGroupJoinRequest(notification.groupId);
+            await NotificationService.rejectGroupJoinRequest(notification.notificationGuid);
             onActionCompleted();
         } catch (error) {
             console.error("Failed to reject group join request:", error);

@@ -1,6 +1,5 @@
 ﻿import axios, {AxiosError} from "axios";
 import {Group} from "../Models/Group";
-import {useAuth} from "../AuthContext";
 
 class GroupService {
 
@@ -55,6 +54,15 @@ class GroupService {
     async getPublicGroups(): Promise<any[]> {
         try {
             const response = await this.apiClient.get("/public-groups");
+            return response.data;
+        } catch (err) {
+            console.error("Error fetching public groups:", err);
+            throw err;
+        }
+    }
+    async getPublicGroupsByUsername(username: string | any): Promise<any[]> {
+        try {
+            const response = await this.apiClient.get(`/public-group/${username}`);
             return response.data;
         } catch (err) {
             console.error("Error fetching groups:", err);
@@ -129,7 +137,12 @@ class GroupService {
     }
 
     async deleteGroup(groupId: string) {
-
+        try {
+            await this.apiClient.delete(`/${groupId}`);
+        } catch (error) {
+            console.error("Error deleting group:", error);
+            throw new Error("Failed to delete group");
+        }
     }
 
     async confirmGroupInvite(groupId: string) {
@@ -160,7 +173,7 @@ class GroupService {
         }
     }
 
-    async checkGroupRelation(groupName: string) {
+    async checkGroupRelation(groupName: string  | undefined) {
         try {
             const response = await this.apiClient.get(`/check-group-relation/${groupName}`);
             return response.data;
@@ -170,9 +183,9 @@ class GroupService {
         }
     }
 
-    async confirmGroupJoinRequest(groupId: string) {
+    async confirmGroupJoinRequest(notificationGuid: string) {
         try {
-            await this.apiClient.get(`/confirm-join-group/${groupId}`);
+            await this.apiClient.get(`/confirm-join-group/${notificationGuid}`);
 
         } catch (error) {
             console.error("Error checking group name:", error);
@@ -180,9 +193,9 @@ class GroupService {
         }
     }
 
-    async rejectGroupJoinRequest(groupId: string) {
+    async rejectGroupJoinRequest(notificationGuid: string) {
         try {
-            await this.apiClient.get(`/reject-join-group/${groupId}`);
+            await this.apiClient.get(`/reject-join-group/${notificationGuid}`);
 
         } catch (error) {
             console.error("Error checking group name:", error);
@@ -196,6 +209,112 @@ class GroupService {
             return response.data;
         } catch (error) {
             console.error("Error checking group relations:", error);
+            return false;
+        }
+    }
+
+    async banUserFromGroup(groupId: string, username: string) {
+        try {
+            const response = await this.apiClient.post(`/ban-from-group/${groupId}/${username}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error checking group relations:", error);
+            return false;
+        }
+    }
+
+    async getBannedUsers(groupId: string | undefined) {
+        try {
+            const response = await this.apiClient.get(`/banned-users/${groupId}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error getting banned users:", error);
+            return false;
+        }
+        
+    }
+
+    async unbanUserFromGroup(groupId: string, userId: string) {
+        try {
+            const response = await this.apiClient.post(`/unban-from-group/${groupId}/${userId}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error unbanning user:", error);
+            return false;
+        }
+    }
+
+    async cancelGroupInvite(notificationGuid: string) {
+        try {
+            await this.apiClient.post(`/cancel-group-invite/${notificationGuid}`);
+        } catch (error) {
+            console.error("Error cancelling group invite:", error);
+            return false;
+        }
+    }
+
+    async banGroup(groupId: string | undefined) {
+        try {
+            await this.apiClient.post(`/ban-group/${groupId}`);
+        } catch (error) {
+            console.error("Error banning the group:", error);
+            return false;
+        }
+    }
+
+    async leaveGroup(groupId: string | undefined) {
+        try {
+            await this.apiClient.post(`/leave-group/${groupId}`);
+        } catch (error) {
+            console.error("Error leaving the group:", error);
+            return false;
+        }
+    }
+
+    async unbanGroup(groupId: string) {
+        try {
+            await this.apiClient.post(`/unban-group/${groupId}`);
+        } catch (error) {
+            console.error("Error unbanning group:", error);
+            return false;
+        }
+    }
+
+    async getBannedGroupsByUser() {
+        try {
+            const response = await this.apiClient.post(`/banned-groups`);
+            return response.data;
+        } catch (error) {
+            console.error("Error getting banned groups:", error);
+            return false;
+        }
+    }
+
+    async cancelGroupJoinRequest(groupId: string) {
+        try {
+            const response = await this.apiClient.post(`/cancel-group-join-request/${groupId}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error getting banned groups:", error);
+            return false;
+        }
+    }
+
+    async cancelGroupInviteByGroupIdAndFriendId(groupId: string, friendId: string) {
+        try {
+            await this.apiClient.post(`/cancel-group-invite/${groupId}/${friendId}`);
+        } catch (error) {
+            console.error("Error cancelling group invite:", error);
+            return false;
+        }
+    }
+
+    async checkGroupRelationOfUser(username: string, groupId: string) {
+        try {
+            const response = await this.apiClient.post(`/check-relation-user/${username}/${groupId}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error getting banned groups:", error);
             return false;
         }
     }

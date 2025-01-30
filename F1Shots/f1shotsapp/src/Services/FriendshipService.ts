@@ -103,8 +103,7 @@ class FriendshipService {
 
     async deleteFriend(username: string) {
         try {
-            const response = await this.apiClient.post(`/delete-friend/${username}`);
-            return response.data;
+            await this.apiClient.post(`/delete-friend/${username}`);
         } catch (err) {
             console.error("Error sending friend request:", err);
             throw err;
@@ -121,12 +120,22 @@ class FriendshipService {
         }
     }
 
-    async cancelFriendRequest(username: string) {
+    async cancelFriendRequestByUsername(username: string) {
         try {
             const response = await this.apiClient.post(`/cancel-request/${username}`);
             return response.data;
         } catch (err) {
-            console.error("Error getting banned users:", err);
+            console.error("Error getting banned users:", err)
+            throw err;
+        }
+    }
+
+    async cancelFriendRequest(userId: string) {
+        try {
+            const response = await this.apiClient.post(`/cancel-friend-request/${userId}`);
+            return response.data;
+        } catch (err) {
+            console.error("Error getting banned users:", err)
             throw err;
         }
     }

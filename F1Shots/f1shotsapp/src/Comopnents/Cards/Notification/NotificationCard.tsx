@@ -13,8 +13,9 @@ interface NotificationProps {
 }
 
 const NotificationCard: React.FC<NotificationProps> = ({ notification, removeNotification  }) => {
-    const { notificationId, userIds, senderUserId, groupId, message, type, status, createdAt } = notification;
+    const { notificationId, notificationGuid, userId, senderUserId, groupId, message, responded, type, status, createdAt } = notification;
     const [notificationStatus, setNotificationStatus] = useState(status);
+    const [notificationRespondedStatus, setNotificationRespondedStatus] = useState(responded);
     const navigate = useNavigate();
 
     const formattedDate = new Date(createdAt).toLocaleString();
@@ -29,6 +30,9 @@ const NotificationCard: React.FC<NotificationProps> = ({ notification, removeNot
                     : "notificationGeneric";
 
     const statusClass = notificationStatus === NotificationStatus.Unread ? "statusUnread" : "statusRead";
+
+    console.log("responded: ", notificationRespondedStatus);
+    console.log("status: ", notificationStatus);
 
     const isFriendRequest = notificationClass === "notificationFriendRequest";
     const isGroupInvite = notificationClass === "notificationGroupInvite";
@@ -46,11 +50,12 @@ const NotificationCard: React.FC<NotificationProps> = ({ notification, removeNot
             if (isGroupInvite) {
                 await GroupService.confirmGroupInvite(groupId);
             } else if (isGroupJoinRequest) {
-                await GroupService.confirmGroupJoinRequest(groupId);
+                await GroupService.confirmGroupJoinRequest(notification.notificationGuid);
             } else if (isFriendRequest) {
                 await FriendshipService.confirmFriendRequest(senderUserId, notificationId);
             }
-            setNotificationStatus(NotificationStatus.ReadAndResponded);
+            setNotificationStatus(NotificationStatus.Read);
+            setNotificationRespondedStatus(true);
         } catch (err) {
             console.error("Error rejecting request:", err);
         }
@@ -61,11 +66,12 @@ const NotificationCard: React.FC<NotificationProps> = ({ notification, removeNot
             if (isGroupInvite) {
                 await GroupService.rejectGroupInvite(groupId);
             } else if (isGroupJoinRequest) {
-                await GroupService.rejectGroupJoinRequest(groupId);
+                await GroupService.rejectGroupJoinRequest(notification.notificationGuid);
             } else if (isFriendRequest) {
                 await FriendshipService.rejectFriendRequest(senderUserId, notificationId);
             }
-            setNotificationStatus(NotificationStatus.ReadAndResponded);
+            setNotificationStatus(NotificationStatus.Read);
+            setNotificationRespondedStatus(true);
         } catch (err) {
             console.error("Error rejecting request:", err);
         }
@@ -100,21 +106,21 @@ const NotificationCard: React.FC<NotificationProps> = ({ notification, removeNot
                     <button
                         className="notificationButton"
                         onClick={handleMarkReadToggle}
-                        disabled={notificationStatus === NotificationStatus.ReadAndResponded}
+                        disabled={notificationStatus === NotificationStatus.Read && notificationRespondedStatus}
                     >
                         {notificationStatus === NotificationStatus.Unread ? "Mark Read" : "Mark Unread"}
                     </button>
                     <button
                         className="notificationButton"
                         onClick={handleConfirmRequest}
-                        disabled={notificationStatus === NotificationStatus.ReadAndResponded}
+                        disabled={notificationStatus === NotificationStatus.Read && notificationRespondedStatus}
                     >
                         Confirm
                     </button>
                     <button
                         className="notificationButton"
                         onClick={handleRejectRequest}
-                        disabled={notificationStatus === NotificationStatus.ReadAndResponded}
+                        disabled={notificationStatus === NotificationStatus.Read && notificationRespondedStatus}
                     >
                         Reject
                     </button>

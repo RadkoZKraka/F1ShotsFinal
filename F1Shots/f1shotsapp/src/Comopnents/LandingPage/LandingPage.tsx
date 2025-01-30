@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     Container,
@@ -22,28 +22,36 @@ import FriendshipService from "../../Services/FriendshipService";
 import GroupService from "../../Services/GroupService";
 import AddFriendModal from "../Modals/AddFriendModal";
 import RequestJoinModal from "../Modals/RequestJoinModal"; // Import the new modal
+import { RefreshContext } from "../Layout/Layout";
+import PublicGroupsList from "../Groups/PublicGroupsList/PublicGroupsList"; // Import the context
 
 const LandingPage = () => {
     const [user, setUser] = useState<User | null>(null);
     const [userGroups, setUserGroups] = useState<Group[] | null>(null);
     const [friends, setFriends] = useState<Friend[] | null>(null);
     const [publicProfiles, setPublicProfiles] = useState<Friend[] | null>(null);
+    const [publicGroups, setPublicGroups] = useState<Group[] | null>(null);
     const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
     const [isRequestJoinModalOpen, setIsRequestJoinModalOpen] = useState(false); // State for the new modal
     const [addError, setAddError] = useState<string | null>(null); // Error state for the join request modal
     const navigate = useNavigate();
 
+    // Consume RefreshContext
+    const { refreshCounter } = useContext(RefreshContext);
+
     const fetchData = async () => {
         try {
-            const [userData, friends, publicProfiles, myGroups] = await Promise.all([
+            const [userData, friends, publicProfiles, publicGroups, myGroups] = await Promise.all([
                 ProfileService.getUserProfile(),
                 FriendshipService.getAllFriends(),
                 ProfileService.getPublicProfiles(),
+                GroupService.getPublicGroups(),
                 GroupService.getMyGroups(),
             ]);
             setUser(userData);
             setFriends(friends);
             setPublicProfiles(publicProfiles);
+            setPublicGroups(publicGroups)
             setUserGroups(myGroups);
         } catch (err) {
             console.error("Failed to fetch data:", err);
@@ -51,9 +59,10 @@ const LandingPage = () => {
         }
     };
 
+    // Refetch data on initial load and whenever refreshCounter changes
     useEffect(() => {
         fetchData();
-    }, [navigate]);
+    }, [navigate, refreshCounter]);
 
     const handleFriendAdded = () => {
         if (friends) {
@@ -64,7 +73,6 @@ const LandingPage = () => {
     };
 
     const handleJoinRequested = () => {
-        // Handle actions after a successful join request
         fetchData(); // Refetch groups after the request
     };
 
@@ -151,6 +159,20 @@ const LandingPage = () => {
                             <CircularProgress className="loader" />
                         )}
                     </Paper>
+
+                    <Paper className="card">
+                        <Typography variant="h5" className="section-title">
+                            <Link to="/public-groups" style={{ textDecoration: "none", color: "inherit" }}>
+                                Public Groups
+                            </Link>
+                        </Typography>
+                        {publicGroups ? (
+                            <PublicGroupsList publicGroups={publicGroups} />
+                        ) : (
+                            <CircularProgress className="loader" />
+                        )}
+                    </Paper>
+
 
                     {/* AddFriendModal */}
                     <AddFriendModal

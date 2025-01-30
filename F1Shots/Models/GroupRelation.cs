@@ -1,6 +1,8 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
+namespace F1Shots.Models;
+
 public class GroupRelation
 {
     [BsonId] public ObjectId Id { get; set; }
@@ -21,14 +23,14 @@ public class GroupRelation
 
 public enum GroupRelationStatus
 {
-    InvitePending,
-    JoinPending,
-    Accepted,
-    InviteRejected,
-    JoinRejected,
-    Banned,
-    GroupBanned,
-    None
+    InvitePending = 0,
+    JoinPending = 1,
+    Accepted = 2,
+    InviteRejected = 3,
+    JoinRejected = 4,
+    Banned = 5,
+    GroupBanned = 6,
+    None = 7,
 }
 public enum GroupRelationRequest
 {

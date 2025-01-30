@@ -1,10 +1,12 @@
 ﻿import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import {useNavigate, useParams} from "react-router-dom";
 import axios from "axios";
-import { Button, Typography, Container, Paper, Menu, MenuItem, IconButton } from "@mui/material";
+import {Button, Typography, Container, Paper, Menu, MenuItem, IconButton, Box} from "@mui/material";
 import GroupList from "../../Groups/GroupList/GroupList";
 import FriendshipService from "../../../Services/FriendshipService";
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import GroupService from "../../../Services/GroupService";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 export enum FriendshipStatus {
     None = 0,
@@ -18,6 +20,7 @@ export enum FriendshipStatus {
 
 const PublicProfilePage: React.FC = () => {
     const { username } = useParams<{ username: string }>();
+    const navigate = useNavigate();
     const [profile, setProfile] = useState<any>(null);
     const [notificationId, setNotificationId] = useState<any>(null);
     const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatus | null>(null);
@@ -41,7 +44,6 @@ const PublicProfilePage: React.FC = () => {
             try {
                 if (username) {
                     const data = await FriendshipService.getFriendshipStatus(username);
-                    console.log(data)
                     setNotificationId(data.notificationId);
                     setFriendshipStatus(data.status);
                 }
@@ -52,8 +54,9 @@ const PublicProfilePage: React.FC = () => {
 
         const fetchPublicGroups = async () => {
             try {
-                const groupsResponse = await axios.get(`https://localhost:44388/api/group/public-group/${username}`);
-                setPublicGroups(groupsResponse.data);
+                // const groupsResponse = await axios.get(`https://localhost:44388/api/group/public-group/${username}`);
+                const groupsResponse = await GroupService.getPublicGroupsByUsername(username);
+                setPublicGroups(groupsResponse);
             } catch (err) {
                 setError("Failed to fetch public groups.");
                 console.error(err);
@@ -136,7 +139,7 @@ const PublicProfilePage: React.FC = () => {
     const handleCancelFriendRequest = async () => {
         try {
             if (username) {
-                await FriendshipService.cancelFriendRequest(username);
+                await FriendshipService.cancelFriendRequestByUsername(username);
                 setFriendshipStatus(FriendshipStatus.None); // Reset status to None after canceling
             }
         } catch (err) {
@@ -144,10 +147,16 @@ const PublicProfilePage: React.FC = () => {
         }
     };
 
+    const handleBack = () => {
+        navigate(-1); // Navigate to the previously visited page
+    };
+
     const getFriendshipStatusText = () => {
         switch (friendshipStatus) {
             case FriendshipStatus.Friends:
                 return "You are friends!";
+            case FriendshipStatus.None:
+                return "Not friends yet.";
             case FriendshipStatus.ThatsYou:
                 return "That's your public profile!";
             case FriendshipStatus.Sent:
@@ -174,6 +183,20 @@ const PublicProfilePage: React.FC = () => {
     return (
         <Container maxWidth="lg" className="public-profile-container">
             <Paper className="profile-paper">
+
+                <Box sx={{marginBottom: 1}}>
+                    <IconButton
+                        onClick={handleBack}
+                        edge="start"
+                        sx={{
+                            marginBottom: "1rem",
+                            display: "inline-flex",
+                            alignItems: "center",
+                        }}
+                    >
+                        <ArrowBackIcon />
+                    </IconButton>
+                </Box>
                 <div className="profile-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                         <Typography variant="h4" gutterBottom>

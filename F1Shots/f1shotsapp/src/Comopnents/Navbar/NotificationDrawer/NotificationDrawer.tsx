@@ -2,7 +2,9 @@
 import { useNavigate } from "react-router-dom";
 import { Drawer, List, ListItem, ListItemText, Button, Typography, Divider } from "@mui/material";
 import NotificationItem from "../NotificationItem";
-import {Notification} from "../../../Models/Notification";  
+import { Notification } from "../../../Models/Notification";
+import { useContext } from "react";
+import { RefreshContext } from "../../Layout/Layout"; // Import the context
 
 interface NotificationDrawerProps {
     isDrawerOpen: boolean;
@@ -14,6 +16,8 @@ interface NotificationDrawerProps {
     error: string | null;
 }
 
+
+
 const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                                                                    isDrawerOpen,
                                                                    closeDrawer,
@@ -24,13 +28,19 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                                                                    error,
                                                                }) => {
     const navigate = useNavigate();
-
+    const { triggerRefresh } = useContext(RefreshContext); // Access the triggerRefresh function
     const handleViewAllNotifications = () => {
         navigate("/notifications"); // Navigate to the /notifications route
     };
 
+    const handleMarkAllChecked = () => {
+        markAllChecked(); // Clear notifications
+        triggerRefresh(); // Notify the context to trigger a refresh
+    };
+
     const handleActionCompleted = async () => {
         await fetchNotifications(); // Refresh notifications after an action
+        triggerRefresh(); // Notify the context to trigger a refresh
     };
 
     return (
@@ -66,7 +76,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                                 key={notification.notificationId}
                                 notification={notification}
                                 userId={userId}
-                                onActionCompleted={handleActionCompleted}
+                                onActionCompleted={handleActionCompleted} // Refresh context when actions complete
                             />
                         ))}
                     </List>
@@ -90,7 +100,10 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                     <Button
                         variant="outlined"
                         fullWidth
-                        onClick={() => { handleViewAllNotifications(); closeDrawer(); }}
+                        onClick={() => {
+                            handleViewAllNotifications();
+                            closeDrawer();
+                        }}
                         sx={{ marginBottom: "10px" }}
                     >
                         View All Notifications
@@ -99,7 +112,7 @@ const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                         variant="contained"
                         color="primary"
                         fullWidth
-                        onClick={markAllChecked}
+                        onClick={handleMarkAllChecked} // Call the updated function
                         sx={{ marginBottom: "10px" }}
                     >
                         Mark All Checked

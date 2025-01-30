@@ -45,6 +45,16 @@ class ProfileService {
             throw error;
         }
     }
+
+    async getRequests() {
+        try {
+            const response = await this.apiClient.get("/user/requests");
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching public profiles:", error);
+            throw error;
+        }
+    }
 }
 
 export default new ProfileService();

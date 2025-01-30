@@ -44,8 +44,8 @@ public class GroupStorage
             Console.WriteLine(e);
             throw;
         }
-
-        return group;
+        var createdGroup = await GetGroupByIdAsync(group.Id);
+        return createdGroup;
     }
 
     public async Task<Group> GetGroupByIdAsync(ObjectId groupId)
@@ -66,6 +66,7 @@ public class GroupStorage
             .Set(g => g.Public, group.Public)
             .Set(g => g.Open, group.Open)
             .Set(g => g.PlayersUserNames, group.PlayersUserNames)
+            .Set(g => g.GroupPortfolioId, group.GroupPortfolioId)
             .Set(g => g.PlayersIds, group.PlayersIds)
             .Set(g => g.AdminUserIds, group.AdminUserIds);
 
@@ -89,5 +90,12 @@ public class GroupStorage
     public async Task<Group> GetGroupByGroupnameAsync(string groupName)
     {
         return await _groups.Find(g => g.Name == groupName).FirstOrDefaultAsync();
+    }
+
+    public async Task<List<Group>> GetPublicGroupsAsync()
+    {
+        var filter = Builders<Group>.Filter.Eq(g => g.Public, true);
+        var groups = await _groups.Find(filter).ToListAsync();
+        return groups;
     }
 }

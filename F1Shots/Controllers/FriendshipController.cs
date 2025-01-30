@@ -65,8 +65,28 @@ public class FriendshipController : ControllerBase
         {
             return StatusCode(500, e.Message);
         }
+        
+        return Ok("Friend request sent.");
+    }
+    [HttpPost("cancel-friend-request/{friendUserIdString}")]
+    public async Task<IActionResult> CancelRequestById([FromRoute] string friendUserIdString)
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString) || !ObjectId.TryParse(userIdString, out ObjectId userId) || !ObjectId.TryParse(friendUserIdString, out ObjectId friendUserId))
+        {
+            return Unauthorized("User not authenticated.");
+        }
 
-
+        var friendUser = await _userService.GetUserByIdAsync(friendUserId);
+        try
+        {
+            await _commonService.CancelFriendRequestAsync(userId, friendUser.Id);
+        }
+        catch (Exception e)
+        {
+            return StatusCode(500, e.Message);
+        }
+        
         return Ok("Friend request sent.");
     }
 

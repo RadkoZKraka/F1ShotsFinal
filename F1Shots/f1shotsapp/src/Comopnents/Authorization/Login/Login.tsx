@@ -4,7 +4,8 @@ import axios from "axios";
 
 import "./Login.less";
 import Register from "../Register/Register";
-import { useAuth } from "../../../AuthContext"; // Importing LESS styles
+import {useAuth} from "../../../Contexts/AuthContext";
+
 
 const Login = () => {
     const [identifier, setIdentifier] = useState(""); // Combined field for email/username

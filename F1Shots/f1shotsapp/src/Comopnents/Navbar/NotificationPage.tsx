@@ -33,7 +33,6 @@ const NotificationPage: React.FC = () => {
                     status: notification.status,
                     createdAt: notification.createdAt,
                 }));
-                console.log(mappedNotifications);
                 // Update the state with the mapped notifications
                 setNotifications(mappedNotifications);
             } catch (err) {

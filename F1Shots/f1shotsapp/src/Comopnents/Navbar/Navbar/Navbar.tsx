@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./Navbar.less";
@@ -6,13 +6,15 @@ import { Badge, IconButton, Button, Box } from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import NotificationDrawer from "../NotificationDrawer/NotificationDrawer";
 import ProfileService from "../../../Services/ProfileService";
-import {useAuth} from "../../../AuthContext";
-import {User} from "../../../Models/User";
-import {Notification} from "../../../Models/Notification";
+import { useAuth } from "../../../Contexts/AuthContext";
+import { User } from "../../../Models/User";
+import { Notification } from "../../../Models/Notification";
+import { RefreshContext } from "../../Layout/Layout"; // Import the context
 
 const Navbar = () => {
     const navigate = useNavigate();
     const { setToken } = useAuth();
+    const { triggerRefresh } = useContext(RefreshContext); // Access the context
     const [profile, setProfile] = useState<User | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -49,7 +51,6 @@ const Navbar = () => {
                     Authorization: `Bearer ${token}`,
                 },
             });
-
             setNotifications(response.data);
         } catch (err) {
             setError("Failed to fetch notifications.");
@@ -111,17 +112,17 @@ const Navbar = () => {
             {/* Right section */}
             <Box className="navbarRight" display="flex" justifyContent="flex-end" gap={2} flexBasis="33%">
                 <IconButton color="inherit" onClick={toggleDrawer} aria-label="notifications"
-                sx={{
-                    width: "auto",
-                }}>
+                            sx={{
+                                width: "auto",
+                            }}>
                     <Badge badgeContent={notifications.length > 0 ? "" : undefined} color="error">
                         <NotificationsIcon />
                     </Badge>
                 </IconButton>
                 <Button className="navbarButton logoutButton" onClick={handleLogout}
-                sx={{
-                    width: "auto",
-                }}>
+                        sx={{
+                            width: "auto",
+                        }}>
                     Logout
                 </Button>
             </Box>
@@ -132,7 +133,10 @@ const Navbar = () => {
                 closeDrawer={closeDrawer}
                 fetchNotifications={fetchNotifications}
                 userId={profile?.id}
-                markAllChecked={() => setNotifications([])}
+                markAllChecked={() => {
+                    setNotifications([]);
+                    triggerRefresh(); // Notify LandingPage to refetch
+                }}
                 notifications={notifications}
                 error={error}
             />

@@ -59,4 +59,9 @@ public class GroupService
     {
         return await _groupStorage.GetGroupByGroupnameAsync(groupName);
     }
+
+    public async Task<List<Group>> GetPublicGroupsAsync()
+    {
+        return await _groupStorage.GetPublicGroupsAsync();
+    }
 }

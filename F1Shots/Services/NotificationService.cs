@@ -20,7 +20,7 @@ public class NotificationService
             // Create a new notification
             var notification = new Notification
             {
-                UserIds = new List<ObjectId>{userId},
+                UserId = userId,
                 Type = type,
                 Message = message,
                 Status = NotificationStatus.Unread,  // Assuming the notification starts as unread

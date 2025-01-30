@@ -50,11 +50,13 @@ namespace F1Shots.Services
 
                     var notification1 = new Notification
                     {
-                        UserIds = new List<ObjectId> { requestFriendId }, // Who is the recipient
+                        Guid = Guid.NewGuid(),
+                        UserId = requestFriendId, // Who is the recipient
                         SenderUserId = user1.Id, // Who sent the notification
                         Message = $"{user1.Username} has sent you a friend request.",
                         Type = NotificationType.FriendRequest,
                         Status = NotificationStatus.Unread,
+                        Responded = false,
                         CreatedAt = DateTime.UtcNow
                     };
 
@@ -71,9 +73,11 @@ namespace F1Shots.Services
 
                 var notification = new Notification
                 {
-                    UserIds = new List<ObjectId> { requestFriendId }, // Who is the recipient
+                    Guid = Guid.NewGuid(),
+                    UserId = requestFriendId, // Who is the recipient
                     SenderUserId = user.Id, // Who sent the notification
                     Message = $"{user.Username} has sent you a friend request.",
+                    Responded = false,
                     Type = NotificationType.FriendRequest,
                     Status = NotificationStatus.Unread,
                     CreatedAt = DateTime.UtcNow
@@ -115,15 +119,17 @@ namespace F1Shots.Services
 
             if (notification != null)
             {
-                notification.Status = NotificationStatus.ReadAndResponded;
+                notification.Status = NotificationStatus.Read;
+                notification.Responded = true;
                 await _notificationStorage.UpdateNotificationAsync(notification);
             }
-            
+
             var user = await _userStorage.GetUserByIdAsync(userId);
-            
+
             var newNotification = new Notification
             {
-                UserIds = new List<ObjectId> { notification.SenderUserId }, // Who is the recipient
+                Guid = Guid.NewGuid(),
+                UserId = notification.SenderUserId, // Who is the recipient
                 SenderUserId = userId,
                 GroupId = ObjectId.Empty,
                 Message = $"Your friend invite of {user.Username} has been confirmed.",
@@ -155,15 +161,17 @@ namespace F1Shots.Services
 
             if (notification != null)
             {
-                notification.Status = NotificationStatus.ReadAndResponded;
+                notification.Status = NotificationStatus.Read;
+                notification.Responded = true;
                 await _notificationStorage.UpdateNotificationAsync(notification);
             }
-            
+
             var user = await _userStorage.GetUserByIdAsync(userId);
-            
+
             var newNotification = new Notification
             {
-                UserIds = new List<ObjectId> { notification.SenderUserId }, // Who is the recipient
+                Guid = Guid.NewGuid(),
+                UserId = notification.SenderUserId, // Who is the recipient
                 SenderUserId = userId,
                 GroupId = ObjectId.Empty,
                 Message = $"Your friend invite of {user.Username} has been rejected.",
@@ -177,7 +185,8 @@ namespace F1Shots.Services
             return true;
         }
 
-        public async Task<Group?> InviteUserToGroupAsync(ObjectId groupId, ObjectId userToBeInvitedId, ObjectId userInvitingId)
+        public async Task<Group?> InviteUserToGroupAsync(ObjectId groupId, ObjectId userToBeInvitedId,
+            ObjectId userInvitingId)
         {
             var group = await _groupStorage.GetGroupByIdAsync(groupId);
             if (group == null)
@@ -204,10 +213,12 @@ namespace F1Shots.Services
 
                     var notification1 = new Notification
                     {
-                        UserIds = new List<ObjectId> { userToBeInvitedId }, // Who is the recipient
+                        Guid = Guid.NewGuid(),
+                        UserId = userToBeInvitedId, // Who is the recipient
                         SenderUserId = userInvitingId, // Who sent the notification
                         GroupId = groupId,
                         Message = $"You have been invited to join {group.Name}.",
+                        Responded = false,
                         Type = NotificationType.GroupInviteRequest,
                         Status = NotificationStatus.Unread,
                         CreatedAt = DateTime.UtcNow
@@ -228,10 +239,13 @@ namespace F1Shots.Services
 
                 var notification = new Notification
                 {
-                    UserIds = new List<ObjectId> { userToBeInvitedId }, // Who is the recipient
+                    Guid = Guid.NewGuid(),
+                    UserId = userToBeInvitedId, // Who is the recipient
                     SenderUserId = userInvitingId, // Who sent the notification
+                    GroupId = group.Id,
                     Message = $"{user.Username} has sent you a group invite to:  {group.Name}.",
-                    Type = NotificationType.FriendRequest,
+                    Responded = false,
+                    Type = NotificationType.GroupInviteRequest,
                     Status = NotificationStatus.Unread,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -240,7 +254,7 @@ namespace F1Shots.Services
 
                 await _groupRelationsStorage.UpdateGroupRelationAsync(existingRequest);
             }
-            
+
 
             else if (existingRequest.Status == GroupRelationStatus.Banned)
             {
@@ -263,7 +277,7 @@ namespace F1Shots.Services
             return group;
         }
 
-        public async Task ConfirmGroupInviteAsync(ObjectId userId, ObjectId groupId, ObjectId notificationId)
+        public async Task ConfirmGroupInviteAsync(ObjectId userId, ObjectId groupId, Guid notificationGuid)
         {
             var groupRelation = await _groupRelationsStorage.GetGroupRelationByIdAsync(userId, groupId);
             if (groupRelation == null || groupRelation.Status != GroupRelationStatus.InvitePending)
@@ -282,18 +296,23 @@ namespace F1Shots.Services
 
             await _groupStorage.UpdateGroupAsync(group);
 
-            var notification = await _notificationStorage.GetNotificationById(notificationId);
-            if (notification != null)
+            var notifications = await _notificationStorage.GetNotificationsByGuidAsync(notificationGuid);
+            foreach (var notification in notifications)
             {
-                notification.Status = NotificationStatus.ReadAndResponded;
-                await _notificationStorage.UpdateNotificationAsync(notification);
+                if (notification != null)
+                {
+                    notification.Status = NotificationStatus.Read;
+                    notification.Responded = true;
+                    await _notificationStorage.UpdateNotificationAsync(notification);
+                }
             }
-            
+
             var user = await _userStorage.GetUserByIdAsync(userId);
-            
+
             var newNotification = new Notification
             {
-                UserIds = new List<ObjectId> { notification.SenderUserId }, // Who is the recipient
+                Guid = Guid.NewGuid(),
+                UserId = notifications.First().SenderUserId, // Who is the recipient
                 SenderUserId = userId,
                 GroupId = groupId,
                 Message = $"Your group invitation to {user.Username} has been confirmed.",
@@ -305,7 +324,7 @@ namespace F1Shots.Services
             await _notificationStorage.AddNotificationAsync(newNotification);
         }
 
-        public async Task RejectGroupInviteAsync(ObjectId userId, ObjectId groupId, ObjectId notificationId)
+        public async Task RejectGroupInviteAsync(ObjectId userId, ObjectId groupId, Guid notificationGuid)
         {
             var groupRelation = await _groupRelationsStorage.GetGroupRelationByIdAsync(userId, groupId);
             if (groupRelation == null || groupRelation.Status != GroupRelationStatus.InvitePending)
@@ -317,17 +336,23 @@ namespace F1Shots.Services
             groupRelation.Status = GroupRelationStatus.InviteRejected;
             await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
 
-            var notification = await _notificationStorage.GetNotificationById(notificationId);
-            if (notification != null)
+            var notifications = await _notificationStorage.GetNotificationsByGuidAsync(notificationGuid);
+            foreach (var notification in notifications)
             {
-                notification.Status = NotificationStatus.ReadAndResponded;
-                await _notificationStorage.UpdateNotificationAsync(notification);
+                if (notification != null)
+                {
+                    notification.Status = NotificationStatus.Read;
+                    notification.Responded = true;
+                    await _notificationStorage.UpdateNotificationAsync(notification);
+                }
             }
+
             var user = await _userStorage.GetUserByIdAsync(userId);
-            
+
             var newNotification = new Notification
             {
-                UserIds = new List<ObjectId> { notification.SenderUserId }, // Who is the recipient
+                Guid = Guid.NewGuid(),
+                UserId = notifications.First().SenderUserId, // Who is the recipient
                 SenderUserId = userId,
                 GroupId = groupId,
                 Message = $"Your group invitation to {user.Username} has been rejected.",
@@ -363,20 +388,24 @@ namespace F1Shots.Services
                     };
 
                     await _groupRelationsStorage.AddGroupRelationAsync(groupRequest);
-
-                    var notification1 = new Notification
+                    var guid1 = Guid.NewGuid();
+                    foreach (var adminUserId in group.AdminUserIds)
                     {
-                        UserIds = group.AdminUserIds, // Who is the recipient
-                        SenderUserId = userId, // Who sent the notification
-                        GroupId = groupId,
-                        Message = $"You have been invited to join {group.Name}.",
-                        Type = NotificationType.GroupInviteRequest,
-                        Status = NotificationStatus.Unread,
-                        CreatedAt = DateTime.UtcNow
-                    };
+                        var notification1 = new Notification
+                        {
+                            Guid = guid1,
+                            UserId = adminUserId, // Who is the recipient
+                            SenderUserId = userId, // Who sent the notification
+                            GroupId = groupId,
+                            Message = $"You have been invited to join {group.Name}.",
+                            Responded = false,
+                            Type = NotificationType.GroupInviteRequest,
+                            Status = NotificationStatus.Unread,
+                            CreatedAt = DateTime.UtcNow
+                        };
 
-                    await _notificationStorage.AddNotificationAsync(notification1);
-
+                        await _notificationStorage.AddNotificationAsync(notification1);
+                    }
 
                     return group;
                 }
@@ -387,18 +416,24 @@ namespace F1Shots.Services
                 existingRequest.GroupId = groupId;
 
                 var user = await _userStorage.GetUserByIdAsync(userId);
+                var guid = Guid.NewGuid();
 
-                var notification = new Notification
+                foreach (var adminUserId in group.AdminUserIds)
                 {
-                    UserIds = group.AdminUserIds, // Who is the recipient
-                    SenderUserId = userId, // Who sent the notification
-                    Message = $"{user.Username} requests to join:  {group.Name}.",
-                    Type = NotificationType.GroupJoinRequest,
-                    Status = NotificationStatus.Unread,
-                    CreatedAt = DateTime.UtcNow
-                };
+                    var notification = new Notification
+                    {
+                        Guid = guid,
+                        UserId = adminUserId, // Who is the recipient
+                        SenderUserId = userId, // Who sent the notification
+                        Message = $"{user.Username} requests to join:  {group.Name}.",
+                        Responded = false,
+                        Type = NotificationType.GroupJoinRequest,
+                        Status = NotificationStatus.Unread,
+                        CreatedAt = DateTime.UtcNow
+                    };
 
-                await _notificationStorage.AddNotificationAsync(notification);
+                    await _notificationStorage.AddNotificationAsync(notification);
+                }
 
                 await _groupRelationsStorage.UpdateGroupRelationAsync(existingRequest);
             }
@@ -431,7 +466,8 @@ namespace F1Shots.Services
             return group;
         }
 
-        public async Task ConfirmGroupJoinRequestAsync(ObjectId userConfirmingId, ObjectId userToBeConfirmedId, ObjectId groupId, ObjectId notificationId)
+        public async Task ConfirmGroupJoinRequestAsync(ObjectId userConfirmingId, ObjectId userToBeConfirmedId,
+            ObjectId groupId, Guid notificationGuid)
         {
             var groupRelation = await _groupRelationsStorage.GetGroupRelationByIdAsync(userToBeConfirmedId, groupId);
             if (groupRelation == null || groupRelation.Status != GroupRelationStatus.JoinPending)
@@ -443,22 +479,27 @@ namespace F1Shots.Services
             groupRelation.Status = GroupRelationStatus.Accepted;
             await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
 
-            var notification = await _notificationStorage.GetNotificationById(notificationId);
-            if (notification != null)
+            var notifications = await _notificationStorage.GetNotificationsByGuidAsync(notificationGuid);
+            foreach (var notification in notifications)
             {
-                notification.Status = NotificationStatus.ReadAndResponded;
-                await _notificationStorage.UpdateNotificationAsync(notification);
+                if (notification != null)
+                {
+                    notification.Status = NotificationStatus.Read;
+                    notification.Responded = true;
+                    await _notificationStorage.UpdateNotificationAsync(notification);
+                }
             }
-            
+
             var group = await _groupStorage.GetGroupByIdAsync(groupId);
-            
+
             group.PlayersUserNames.Add(await _userStorage.GetUsernameByIdAsync(userToBeConfirmedId));
             group.PlayersIds.Add(userToBeConfirmedId);
             await _groupStorage.UpdateGroupAsync(group);
-            
+
             var newNotification = new Notification
             {
-                UserIds = new List<ObjectId> { userToBeConfirmedId }, // Who is the recipient
+                Guid = Guid.NewGuid(),
+                UserId = userToBeConfirmedId, // Who is the recipient
                 SenderUserId = userConfirmingId,
                 GroupId = ObjectId.Empty,
                 Message = $"Your group join request to {group.Name} has been confirmed.",
@@ -470,7 +511,8 @@ namespace F1Shots.Services
             await _notificationStorage.AddNotificationAsync(newNotification);
         }
 
-        public async Task RejectGroupJoinRequestAsync(ObjectId userRejectingId, ObjectId userToBeRejectedId, ObjectId groupId, ObjectId notificationId)
+        public async Task RejectGroupJoinRequestAsync(ObjectId userRejectingId, ObjectId userToBeRejectedId,
+            ObjectId groupId, Guid notificationGuid)
         {
             var groupRelation = await _groupRelationsStorage.GetGroupRelationByIdAsync(userToBeRejectedId, groupId);
             if (groupRelation == null || groupRelation.Status != GroupRelationStatus.JoinPending)
@@ -482,18 +524,23 @@ namespace F1Shots.Services
             groupRelation.Status = GroupRelationStatus.JoinRejected;
             await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
 
-            var notification = await _notificationStorage.GetNotificationById(notificationId);
-            if (notification != null)
+            var notifications = await _notificationStorage.GetNotificationsByGuidAsync(notificationGuid);
+            foreach (var notification in notifications)
             {
-                notification.Status = NotificationStatus.ReadAndResponded;
-                await _notificationStorage.UpdateNotificationAsync(notification);
+                if (notification != null)
+                {
+                    notification.Status = NotificationStatus.Read;
+                    notification.Responded = true;
+                    await _notificationStorage.UpdateNotificationAsync(notification);
+                }
             }
-            
+
             var group = await _groupStorage.GetGroupByIdAsync(groupId);
-            
+
             var newNotification = new Notification
             {
-                UserIds = new List<ObjectId> { userToBeRejectedId }, // Who is the recipient
+                Guid = Guid.NewGuid(),
+                UserId = userToBeRejectedId, // Who is the recipient
                 SenderUserId = userRejectingId,
                 GroupId = ObjectId.Empty,
                 Message = $"Your group join request to {group.Name} has been rejected.",
@@ -545,6 +592,11 @@ namespace F1Shots.Services
         public async void UpdateGroupInNotificationsAsync(Group updatedGroup)
         {
             _notificationStorage.UpdateGroupInNotificationsAsync(updatedGroup);
+        }
+
+        public async void UpdateUsernameInNotificationsAsync(ObjectId userId, string updatedUsername)
+        {
+            _notificationStorage.UpdateUsernameInNotificationsAsync(userId, updatedUsername);
         }
 
         public async Task<Notification> GetFriendRequestNotificationAsync(ObjectId userId, ObjectId visitingUserId)
@@ -621,8 +673,33 @@ namespace F1Shots.Services
 
             if (existingRequest != null)
             {
-                throw new InvalidOperationException(
-                    "Group join request already exists or you already joined that group.");
+                existingRequest.Status = GroupRelationStatus.JoinPending;
+                var group1 = await _groupStorage.GetGroupByIdAsync(groupId);
+                var user1 = await _userStorage.GetUserByIdAsync(userId);
+
+                var guid1 = Guid.NewGuid();
+
+                await _groupRelationsStorage.UpdateGroupRelationAsync(existingRequest);
+
+                foreach (var adminUserId in group1.AdminUserIds)
+                {
+                    var notification = new Notification
+                    {
+                        Guid = guid1,
+                        UserId = adminUserId, // Who is the recipient
+                        SenderUserId = userId, // Who sent the notification
+                        GroupId = groupId,
+                        Message = $"{user1.Username} has sent a request to join {group1.Name}.",
+                        Responded = false,
+                        Type = NotificationType.GroupJoinRequest,
+                        Status = NotificationStatus.Unread,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await _notificationStorage.AddNotificationAsync(notification);
+                }
+
+                return;
             }
 
             var groupRequest = new GroupRelation
@@ -637,18 +714,25 @@ namespace F1Shots.Services
             var group = await _groupStorage.GetGroupByIdAsync(groupId);
             var user = await _userStorage.GetUserByIdAsync(userId);
 
-            var notification = new Notification
-            {
-                UserIds = new List<ObjectId>(group.AdminUserIds), // Who is the recipient
-                SenderUserId = userId, // Who sent the notification
-                GroupId = groupId,
-                Message = $"{user.Username} has sent a request to join {group.Name}.",
-                Type = NotificationType.GroupJoinRequest,
-                Status = NotificationStatus.Unread,
-                CreatedAt = DateTime.UtcNow
-            };
+            var guid = Guid.NewGuid();
 
-            await _notificationStorage.AddNotificationAsync(notification);
+            foreach (var adminUserId in group.AdminUserIds)
+            {
+                var notification = new Notification
+                {
+                    Guid = guid,
+                    UserId = adminUserId, // Who is the recipient
+                    SenderUserId = userId, // Who sent the notification
+                    GroupId = groupId,
+                    Message = $"{user.Username} has sent a request to join {group.Name}.",
+                    Responded = false,
+                    Type = NotificationType.GroupJoinRequest,
+                    Status = NotificationStatus.Unread,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _notificationStorage.AddNotificationAsync(notification);
+            }
         }
 
         public async Task<List<GroupRelation>> GetGroupRelationsByGroupIdAsync(ObjectId groupId)
@@ -661,13 +745,26 @@ namespace F1Shots.Services
             var group = await _groupStorage.GetGroupByIdAsync(groupObjectId);
 
             group.PlayersIds.Remove(playerObjectId);
+            group.AdminUserIds.Remove(playerObjectId);
             group.PlayersUserNames.Remove(await _userStorage.GetUsernameByIdAsync(playerObjectId));
-
+            
+            var groupRelation = await _groupRelationsStorage.GetGroupRelation(playerObjectId, groupObjectId);
+            if (groupRelation == null)
+            {
+                throw new Exception("Group relation cannot be found.");
+            }
+            
+            groupRelation.Status = GroupRelationStatus.None;
+            
+            await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
             await _groupStorage.UpdateGroupAsync(group);
+
+            var guid = Guid.NewGuid();
 
             var notification = new Notification
             {
-                UserIds = new List<ObjectId> { playerObjectId }, // Who is the recipient
+                Guid = guid,
+                UserId = playerObjectId, // Who is the recipient
                 SenderUserId = ObjectId.Empty, // Who sent the notification
                 GroupId = groupObjectId,
                 Message = $"You have been removed from {group.Name}.",
@@ -677,6 +774,320 @@ namespace F1Shots.Services
             };
 
             await _notificationStorage.AddNotificationAsync(notification);
+        }
+
+        public async Task BanUserFromGroupAsync(ObjectId userId, ObjectId groupId)
+        {
+            var groupRelation = await _groupRelationsStorage.GetGroupRelation(userId, groupId);
+            var group = await _groupStorage.GetGroupByIdAsync(groupId);
+
+            if (groupRelation == null)
+            {
+                if (group.PlayersIds.Contains(userId))
+                {
+                    group.PlayersIds.Remove(userId);
+                    group.PlayersUserNames.Remove(await _userStorage.GetUsernameByIdAsync(userId));
+                }
+
+                // Check if the user is in the group admins list
+                if (group.AdminUserIds.Contains(userId))
+                {
+                    group.AdminUserIds.Remove(userId);
+                }
+
+                // Update the group if any removal occurred
+                await _groupStorage.UpdateGroupAsync(group);
+
+                var relation = new GroupRelation
+                {
+                    UserToBeInvitedId = userId,
+                    GroupId = groupId,
+                    Status = GroupRelationStatus.Banned,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _groupRelationsStorage.AddGroupRelationAsync(relation);
+
+                var notification2 = new Notification
+                {
+                    Guid = Guid.NewGuid(),
+                    UserId = userId, // Who is the recipient
+                    SenderUserId = ObjectId.Empty, // Who sent the notification
+                    GroupId = groupId,
+                    Message = $"You have been banned from {group.Name}.",
+                    Type = NotificationType.Info,
+                    Status = NotificationStatus.Unread,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _notificationStorage.AddNotificationAsync(notification2);
+                return;
+            }
+
+            if (groupRelation.Status == GroupRelationStatus.GroupBanned)
+            {
+                return;
+            }
+
+            groupRelation.Status = GroupRelationStatus.Banned;
+            await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
+
+
+            var notification = new Notification
+            {
+                Guid = Guid.NewGuid(),
+                UserId = userId, // Who is the recipient
+                SenderUserId = ObjectId.Empty, // Who sent the notification
+                GroupId = groupId,
+                Message = $"You have been banned from {group.Name}.",
+                Type = NotificationType.Info,
+                Status = NotificationStatus.Unread,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _notificationStorage.AddNotificationAsync(notification);
+        }
+
+        public async Task<List<UserProfile>> GetBannedUsersByGroupIdAsync(ObjectId groupId)
+        {
+            var groupRelations = await _groupRelationsStorage.GetGroupRelationsByGroupIdAndStatusAsync(groupId,
+                GroupRelationStatus.Banned);
+
+            var bannedUsers = new List<UserProfile>();
+            foreach (var relation in groupRelations)
+            {
+                var userProfile = await _userStorage.GetUserByIdAsync(relation.UserToBeInvitedId);
+                if (userProfile != null)
+                {
+                    bannedUsers.Add(userProfile);
+                }
+            }
+
+            return bannedUsers;
+        }
+
+        public async Task UnbanUserFromGroupAsync(ObjectId userId, ObjectId groupId)
+        {
+            var groupRelation = await _groupRelationsStorage.GetGroupRelation(userId, groupId);
+            if (groupRelation == null || groupRelation.Status != GroupRelationStatus.Banned)
+            {
+                return;
+            }
+
+            groupRelation.Status = GroupRelationStatus.None;
+            await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
+
+            var group = await _groupStorage.GetGroupByIdAsync(groupId);
+
+            var notification = new Notification
+            {
+                Guid = Guid.NewGuid(),
+                UserId = userId, // Who is the recipient
+                SenderUserId = ObjectId.Empty, // Who sent the notification
+                GroupId = groupId,
+                Message = $"You have been unbanned from {group.Name}.",
+                Type = NotificationType.Info,
+                Status = NotificationStatus.Unread,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _notificationStorage.AddNotificationAsync(notification);
+        }
+
+        public async Task CancelGroupRequestAsync(ObjectId userId, ObjectId groupId)
+        {
+            var groupRelation = await _groupRelationsStorage.GetGroupRelation(userId, groupId);
+
+            if (groupRelation == null || groupRelation.Status != GroupRelationStatus.InvitePending)
+            {
+                throw new InvalidOperationException(
+                    "Friendship request does not exist or has already been processed.");
+            }
+
+            groupRelation.Status = GroupRelationStatus.None;
+
+            var notification =
+                await _notificationStorage.GetGroupInviteByGroupIdAndUserIdAsync(groupRelation.GroupId,
+                    groupRelation.UserToBeInvitedId);
+
+            await _notificationStorage.DeleteNotificationAsync(notification.Id);
+
+            await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
+        }
+        
+        public async Task CancelGroupJoinRequestAsync(ObjectId userId, ObjectId groupId)
+        {
+            var groupRelation = await _groupRelationsStorage.GetGroupRelation(userId, groupId);
+
+            if (groupRelation == null || groupRelation.Status != GroupRelationStatus.JoinPending)
+            {
+                throw new InvalidOperationException(
+                    "Group Join request doesnt exist.");
+            }
+
+            groupRelation.Status = GroupRelationStatus.None;
+
+            var notifications =
+                await _notificationStorage.GetGroupJoinRequestByGroupIdAndUserIdAsync(groupRelation.GroupId,
+                    groupRelation.UserToBeInvitedId);
+
+            foreach (var notification in notifications)
+            {
+                await _notificationStorage.DeleteNotificationAsync(notification.Id);
+            }
+
+            await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
+        }
+
+        public async Task BanGroupAsync(ObjectId groupId, ObjectId userId)
+        {
+            var groupRelation = await _groupRelationsStorage.GetGroupRelation(userId, groupId);
+
+            if (groupRelation == null)
+            {
+                var newRelation = new GroupRelation
+                {
+                    UserToBeInvitedId = userId,
+                    GroupId = groupId,
+                    Status = GroupRelationStatus.GroupBanned,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _groupRelationsStorage.AddGroupRelationAsync(newRelation);
+
+                return;
+            }
+            groupRelation.Status = GroupRelationStatus.GroupBanned;
+            await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
+
+            var group = await _groupStorage.GetGroupByIdAsync(groupId);
+
+            if (group.PlayersIds.Contains(userId))
+            {
+                group.PlayersIds.Remove(userId);
+                group.PlayersUserNames.Remove(await _userStorage.GetUsernameByIdAsync(userId));
+            }
+
+            // Check if the user is in the group admins list
+            if (group.AdminUserIds.Contains(userId))
+            {
+                group.AdminUserIds.Remove(userId);
+            }
+
+            // Update the group if any removal occurred
+            await _groupStorage.UpdateGroupAsync(group);
+        }
+
+        public async Task LeaveGroupAsync(ObjectId groupId, ObjectId userId)
+        {
+            var group = await _groupStorage.GetGroupByIdAsync(groupId);
+            group.PlayersIds.Remove(userId);
+            group.PlayersUserNames.Remove(await _userStorage.GetUsernameByIdAsync(userId));
+
+            if (group.AdminUserIds.Contains(userId))
+            {
+                group.AdminUserIds.Remove(userId);
+            }
+
+            var groupRelation = await _groupRelationsStorage.GetGroupRelation(userId, groupId);
+            var user = await _userStorage.GetUserByIdAsync(userId);
+            if (groupRelation != null)
+            {
+                groupRelation.Status = GroupRelationStatus.None;
+                await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
+            }
+
+            var guid = Guid.NewGuid();
+
+            foreach (var playerId in group.PlayersIds)
+            {
+                var notification = new Notification
+                {
+                    Guid = guid,
+                    UserId = playerId, // Who is the recipient
+                    SenderUserId = ObjectId.Empty, // Who sent the notification
+                    GroupId = groupId,
+                    Message = $"{user.Username} has left {group.Name}.",
+                    Type = NotificationType.Info,
+                    Status = NotificationStatus.Unread,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _notificationStorage.AddNotificationAsync(notification);
+            }
+
+            await _groupStorage.UpdateGroupAsync(group);
+        }
+
+        public async Task<List<Group>> GetBannedGroupsByUserIdAsync(ObjectId userId)
+        {
+            var groupRelations = await _groupRelationsStorage.GetGroupRelationsByUserIdAndStatusAsync(userId,
+                GroupRelationStatus.GroupBanned);
+
+            if (groupRelations == null)
+            {
+                return new List<Group>();
+            }
+            var bannedGroups = new List<Group>();
+            foreach (var relation in groupRelations)
+            {
+                var group = await _groupStorage.GetGroupByIdAsync(relation.GroupId);
+                if (group != null)
+                {
+                    bannedGroups.Add(group);
+                }
+            }
+
+            return bannedGroups;
+        }
+
+        public async Task UnbanGroupAsync(ObjectId groupId, ObjectId userId)
+        {
+            var groupRelation = await _groupRelationsStorage.GetGroupRelation(userId, groupId);
+            if (groupRelation == null || groupRelation.Status != GroupRelationStatus.GroupBanned)
+            {
+                return;
+            }
+
+            groupRelation.Status = GroupRelationStatus.None;
+            await _groupRelationsStorage.UpdateGroupRelationAsync(groupRelation);
+        }
+
+        public async Task<List<object>> GetRequests(ObjectId userId)
+        {
+            // Fetch pending group join requests and pending friend requests
+            var groupRelations = await _groupRelationsStorage.GetGroupRelationsByUserIdAndStatusAsync(userId, GroupRelationStatus.JoinPending);
+            var userRelations = await _userRelationsStorage.GetUserRelationsByUserIdAndStatusAsync(userId, UserRelationStatus.Pending);
+    
+            // Create a list to hold all the requests in an anonymous class format
+            var requests = new List<object>();
+
+            // Process group relations and add them to the list
+            foreach (var groupRelation in groupRelations)
+            {
+                var groupRequest = new 
+                {
+                    Type = "Group",
+                    GroupId = groupRelation.GroupId.ToString(),
+                    GroupName = _groupStorage.GetGroupByIdAsync(groupRelation.GroupId).Result.Name,
+                };
+                requests.Add(groupRequest);
+            }
+
+            // Process user relations and add them to the list
+            foreach (var userRelation in userRelations)
+            {
+                var userRequest = new 
+                {
+                    Type = "User",
+                    RecipientUserId = userRelation.RecipientUserId.ToString(),
+                    UserName = _userStorage.GetUserByIdAsync(userRelation.RecipientUserId).Result.Username
+                };
+                requests.Add(userRequest);
+            }
+
+            return requests;
+        }
+
+        public async Task<List<Notification>> GetNotificationsByGuidAsync(Guid notificationGuid)
+        {
+            return await _notificationStorage.GetNotificationsByGuidAsync(notificationGuid);
         }
     }
 }

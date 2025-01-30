@@ -1,9 +1,10 @@
 ﻿import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import "./CreateGroup.less";
+import { Button, TextField, Checkbox, FormControlLabel, CircularProgress } from "@mui/material";
 import { Group, Motorsport } from "../../../Models/Group";
 import GroupService from "../../../Services/GroupService";
 import { debounce } from "@mui/material";
+import "./CreateGroup.less";
 
 const CreateGroup = () => {
     const currentYear = new Date().getFullYear();
@@ -13,12 +14,14 @@ const CreateGroup = () => {
     const [error, setError] = useState<string | null>(null);
     const [nameTaken, setNameTaken] = useState(false); // Tracks if name is already taken
     const [isChecking, setIsChecking] = useState(false); // Tracks if the name check is in progress
+    const [isTyping, setIsTyping] = useState(false); // Tracks if the user is typing
     const navigate = useNavigate();
 
     // Debounced function to check if the group name exists
     const checkGroupNameAvailability = useCallback(
         debounce(async (name: string) => {
             setIsChecking(true); // Set loading state to true when checking availability
+            setIsTyping(false); // Stop disabling the button once typing ends
             try {
                 const exists = await GroupService.checkGroupNameExists(name);
                 setNameTaken(exists); // Set the state if the name exists
@@ -35,13 +38,13 @@ const CreateGroup = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const groupData: Group = {
+        const groupData: any = {
             id: "",
             name: groupName,
             adminUserIds: [],
             playersIds: [],
             playersUserNames: [],
-            years: [currentYear],
+            year: currentYear,
             motorsport: Motorsport.F1,
             public: isPublic,
             open: isOpen,
@@ -67,6 +70,7 @@ const CreateGroup = () => {
         setGroupName(newName);
 
         if (newName) {
+            setIsTyping(true); // Set typing flag to true when user starts typing
             checkGroupNameAvailability(newName); // Check if the name exists after every change
         }
 
@@ -78,48 +82,51 @@ const CreateGroup = () => {
             <h1>Create a New Group</h1>
             {error && <p className="error-message">{error}</p>}
             {nameTaken && <p className="error-message">This group name is already taken. Please choose a different name.</p>}
+
             <form onSubmit={handleSubmit} className="create-group-form">
+                {/* Group Name Input */}
                 <div className="form-group">
-                    <label>Group Name</label>
-                    <input
-                        type="text"
+                    <TextField
+                        label="Group Name"
                         value={groupName}
-                        onChange={handleGroupNameChange} // Use the updated handler
-                        required
+                        onChange={handleGroupNameChange}
+                        fullWidth
+                        error={nameTaken || !!error}
+                        helperText={nameTaken ? "This group name is already taken." : error}
                     />
                 </div>
 
+                {/* Public and Open Checkboxes */}
                 <div className="form-group">
-                    <label>
-                        <input
-                            type="checkbox"
-                            checked={isPublic}
-                            onChange={(e) => setIsPublic(e.target.checked)}
-                        />
-                        Open Group
-                    </label>
-                    <label>
-                        <input
-                            type="checkbox"
-                            checked={isOpen}
-                            onChange={(e) => setIsOpen(e.target.checked)}
-                        />
-                        Public Group
-                    </label>
+                    <FormControlLabel
+                        control={<Checkbox checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />}
+                        label="Open Group"
+                    />
+                    <FormControlLabel
+                        control={<Checkbox checked={isOpen} onChange={(e) => setIsOpen(e.target.checked)} />}
+                        label="Public Group"
+                    />
                 </div>
 
+                {/* Year Display */}
                 <div className="form-group">
-                    <label>Year</label>
-                    <p>{currentYear}</p>
+                    <p>Year: {currentYear}</p>
                 </div>
 
-                <button
+                {/* Submit Button */}
+                <Button
                     type="submit"
-                    className="submit-button"
-                    disabled={nameTaken || isChecking} // Disable if name is taken or checking is in progress
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    disabled={nameTaken || isChecking || isTyping} // Disable if name is taken, checking is in progress, or user is typing
                 >
-                    {isChecking ? "Checking..." : "Create Group"} {/* Show loading text when checking */}
-                </button>
+                    {isChecking ? (
+                        <CircularProgress size={24} color="inherit" />
+                    ) : (
+                        "Create Group"
+                    )}
+                </Button>
             </form>
         </div>
     );
